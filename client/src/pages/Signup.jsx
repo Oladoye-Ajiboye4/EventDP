@@ -13,6 +13,8 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 
 const Signup = () => {
   const signupUrl = 'http://localhost:7890/handle-signup'
+  const manualSignupUrl = 'http://localhost:7890/manual-signup'
+
 
   const navigate = useNavigate();
 
@@ -30,7 +32,7 @@ const Signup = () => {
     });
   };
 
-    // Toastify notification for error 
+  // Toastify notification for error 
   const errorNotify = (errorMessage) => {
     toast.error(`${errorMessage}`, {
       position: "top-center",
@@ -69,9 +71,18 @@ const Signup = () => {
     }),
     onSubmit: values => {
       notify();
-      setTimeout(() => {
-        navigate('/signin');
-      }, 1000);
+      axios.post(manualSignupUrl, values)
+        .then((result) => {
+          if (result.status === 201) {
+            setTimeout(() => {
+              navigate('/signin');
+            }, 1000);
+          }
+        })
+        .catch((error) => {
+          console.log(error)
+          errorNotify('Server error. Try agin later')
+        })
     },
   });
 
@@ -99,7 +110,7 @@ const Signup = () => {
             if (result.status === 201) {
               notify()
               setTimeout(() => {
-                navigate('/signin');
+                navigate('/dashboard');
               }, 1000);
             }
           })
@@ -116,9 +127,26 @@ const Signup = () => {
         // The AuthCredential type that was used.
         const credential = GoogleAuthProvider.credentialFromError(error);
         // ...
-        console.log('Error logging in', error)
-        errorNotify('Could\'t communicate with Google. Try again')
-
+        if (errorCode === 'auth/popup-closed-by-user') {
+          errorNotify('Popup closed by user. Try again')
+          return;
+        } else if (errorCode === 'auth/cancelled-popup-request') {
+          errorNotify('Cancelled popup request. Try again')
+          return;
+        } else if (errorCode === 'auth/popup-blocked') {
+          errorNotify('Popup blocked by browser. Allow popups and try again')
+          return;
+        } else if (errorCode === 'auth/invalid-credential') {
+          errorNotify('Invalid credential. Try again')
+          return;
+        } else if(errorCode === 'auth/account-exists-with-different-credential') {
+          errorNotify('An account already exists with the same email but different sign-in credentials. Try signing in with a different method.')
+          return;
+        }
+        else {
+          console.log('Error logging in', error)
+          errorNotify('Could\'t communicate with Google. Try again')
+        }
       });
 
   }
