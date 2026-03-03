@@ -30,6 +30,20 @@ const Signup = () => {
     });
   };
 
+    // Toastify notification for error 
+  const errorNotify = (errorMessage) => {
+    toast.error(`${errorMessage}`, {
+      position: "top-center",
+      autoClose: 5000,
+      hideProgressBar: false,
+      closeOnClick: false,
+      pauseOnHover: true,
+      draggable: true,
+      theme: "light",
+      transition: Bounce,
+    });
+  };
+
   //Formik handles all form validations and state management
   const formik = useFormik({
     initialValues: {
@@ -76,16 +90,22 @@ const Signup = () => {
         const token = credential.accessToken;
         // The signed-in user info.
         const user = result.user;
-        // IdP data available using getAdditionalUserInfo(result)
-        // ...
+        const userData = { ...user, ...credential, ...token }
         console.log('Success', user)
 
-        axios.post(signupUrl, user)
+        axios.post(signupUrl, userData)
           .then((result) => {
             console.log('result', result)
+            if (result.status === 201) {
+              notify()
+              setTimeout(() => {
+                navigate('/signin');
+              }, 1000);
+            }
           })
           .catch((error) => {
             console.log(error)
+            errorNotify('Server error. Try agin later')
           })
       }).catch((error) => {
         // Handle Errors here.
@@ -97,6 +117,7 @@ const Signup = () => {
         const credential = GoogleAuthProvider.credentialFromError(error);
         // ...
         console.log('Error logging in', error)
+        errorNotify('Could\'t communicate with Google. Try again')
 
       });
 
