@@ -2,6 +2,8 @@ const mongoose = require('./connection/connection')
 const handleSignup = require('./auth/signup')
 const handleSignin = require('./auth/signin')
 const manualSignup = require('./auth/manualSignup')
+const manualSignin = require('./auth/manualSignin')
+const getDashboard = require('./auth/getDashboard')
 const express = require('express')
 require('dotenv').config()
 
@@ -16,6 +18,8 @@ const PORT = process.env.port || 7890;
 app.post('/handle-signup', handleSignup)
 app.post('/handle-signin', handleSignin)
 app.post('/manual-signup', manualSignup)
+app.post('/manual-signin', manualSignin)
+app.get('/getDashoard', getDashboard)
 
 app.listen(PORT, () => {
     console.log(`Server listening on http://localhost:${PORT}`)

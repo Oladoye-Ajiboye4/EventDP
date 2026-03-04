@@ -13,6 +13,7 @@ import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
 
 const Signin = () => {
   const signinUrl = 'http://localhost:7890/handle-signin'
+  const manualSigninUrl = 'http://localhost:7890/manual-signin'
 
   const navigate = useNavigate();
 
@@ -60,18 +61,22 @@ const Signin = () => {
         .required('Required'),
     }),
     onSubmit: values => {
-      axios.post(signinUrl, values)
+      axios.post(manualSigninUrl, values)
         .then((result) => {
-          if (result.status === 200 || result.status === 201) {
+          if (result.status === 200) {
             notify();
             setTimeout(() => {
               navigate('/dashboard');
             }, 1000);
+          } else if (result.status === 401 || result.status === 500 || result.status === 404) {
+            errorNotify(result.data.message)
+          } else {
+            errorNotify('Unexpected server response. Try again later')  
           }
         })
         .catch((error) => {
           console.log(error)
-          errorNotify('Invalid credentials or server error')
+          errorNotify('Invalid credentials')
         })
     },
   });
