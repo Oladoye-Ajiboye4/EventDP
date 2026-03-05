@@ -9,7 +9,7 @@ import { Icon } from '@iconify/react';
 import axios from 'axios';
 import firebaseConfig from '../firebase/config'
 import { initializeApp } from "firebase/app"
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth"
+import { getAuth, signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from "firebase/auth"
 
 const Signup = () => {
   const signupUrl = 'http://localhost:7890/handle-signup'
@@ -91,6 +91,7 @@ const Signup = () => {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth();
   const provider = new GoogleAuthProvider();
+  const githubProvider = new GithubAuthProvider();
   auth.useDeviceLanguage();
 
   const googleSignUpBtn = () => {
@@ -101,22 +102,24 @@ const Signup = () => {
         const token = credential.accessToken;
         // The signed-in user info.
         const user = result.user;
-        const userData = { ...user, ...credential, ...token }
-        console.log('Success', user)
+        const userData = { username: user.displayName, email: user.email, token, provider: 'google' }
 
         axios.post(signupUrl, userData)
           .then((result) => {
-            console.log('result', result)
             if (result.status === 201) {
-              notify()
+              const token = result.data.user.token;
+              if (token) {
+                localStorage.setItem('token', token);
+              }
+              notify();
+              localStorage.setItem('user', JSON.stringify(result.data.user));
               setTimeout(() => {
                 navigate('/dashboard');
               }, 1000);
             }
           })
           .catch((error) => {
-            console.log(error)
-            errorNotify('Server error. Try agin later')
+            errorNotify('Server error. Try again later')
           })
       }).catch((error) => {
         // Handle Errors here.
@@ -139,7 +142,7 @@ const Signup = () => {
         } else if (errorCode === 'auth/invalid-credential') {
           errorNotify('Invalid credential. Try again')
           return;
-        } else if(errorCode === 'auth/account-exists-with-different-credential') {
+        } else if (errorCode === 'auth/account-exists-with-different-credential') {
           errorNotify('An account already exists with the same email but different sign-in credentials. Try signing in with a different method.')
           return;
         }
@@ -150,6 +153,72 @@ const Signup = () => {
       });
 
   }
+
+  const githubSignUpBtn = () => {
+
+    signInWithPopup(auth, githubProvider)
+      .then((result) => {
+        // This gives you a GitHub Access Token. You can use it to access the GitHub API.
+        const credential = GithubAuthProvider.credentialFromResult(result);
+        const token = credential.accessToken;
+
+        // The signed-in user info.
+        const user = result.user;
+        // IdP data available using getAdditionalUserInfo(result)
+        // ...
+        const userData = { username: user.displayName, email: user.email, token, provider: 'github' }
+
+        axios.post(signupUrl, userData)
+          .then((result) => {
+            if (result.status === 201) {
+              const token = result.data.user.token;
+              console.log('GitHub login successful, token:', token);
+              if (token) {
+                localStorage.setItem('token', token);
+              }
+              notify();
+              localStorage.setItem('user', JSON.stringify(result.data.user));
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 1000);
+            }
+          })
+          .catch((error) => {
+            console.log(error)
+            errorNotify('Server error. Try again later')
+          })
+      }).catch((error) => {
+        // Handle Errors here.
+        const errorCode = error.code;
+        const errorMessage = error.message;
+        // The email of the user's account used.
+        const email = error.customData.email;
+        // The AuthCredential type that was used.
+        const credential = GithubAuthProvider.credentialFromError(error);
+        // ...
+        if (errorCode === 'auth/popup-closed-by-user') {
+          errorNotify('Popup closed by user. Try again')
+          return;
+        } else if (errorCode === 'auth/cancelled-popup-request') {
+          errorNotify('Cancelled popup request. Try again')
+          return;
+        } else if (errorCode === 'auth/popup-blocked') {
+          errorNotify('Popup blocked by browser. Allow popups and try again')
+          return;
+        } else if (errorCode === 'auth/invalid-credential') {
+          errorNotify('Invalid credential. Try again')
+          return;
+        } else if (errorCode === 'auth/account-exists-with-different-credential') {
+          errorNotify('An account already exists with the same email but different sign-in credentials. Try signing in with a different method.')
+          return;
+        }
+        else {
+          console.log('Error logging in', error)
+          errorNotify('Could\'t communicate with GitHub. Try again')
+        }
+      });
+  }
+
 
   return (
     // Easil customize the Sign up page to your taste
@@ -200,7 +269,7 @@ const Signup = () => {
               <Icon icon="material-icon-theme:google" width="22" height="22" />
               <span>Continue with Google</span>
             </button>
-            <button type='button' className='flex gap-3 justify-center items-center font-semibold bg-amber-950 py-3 rounded-xl hover:bg-amber-900 transition text-white'>
+            <button onClick={() => { githubSignUpBtn() }} type='button' className='flex gap-3 justify-center items-center font-semibold bg-amber-950 py-3 rounded-xl hover:bg-amber-900 transition text-white'>
               <Icon icon="mdi:github" width="22" height="22" />
               <span>Continue with GitHub</span>
             </button>

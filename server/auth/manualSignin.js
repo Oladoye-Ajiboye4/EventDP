@@ -18,7 +18,7 @@ const manualSignin = (req, res) => {
                 return res.status(401).json({ message: 'Incorrect password', userData: result })
             }
 
-            const token = jwt.sign({ email: result.email }, "secretkey", { expiresIn: '1h' });
+            const token = jwt.sign({ email: result.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
             console.log("Generated Token:", token);
             return res.status(200).json({
                 message: "Login Successful",

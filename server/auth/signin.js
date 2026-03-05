@@ -1,9 +1,28 @@
+const jwt = require('jsonwebtoken');
 
 const handleSignin = (req, res) => {
-  // const userData = req.body.user 
-  console.log(req.body)
-  res.status(201).json({message: 'Sucess'})
-  
-}
+  const userData = req.body;
+  console.log(req.body);
 
-module.exports = handleSignin
+  // Generate your own JWT token
+  const token = jwt.sign(
+    {
+      email: userData.email,
+      username: userData.username,
+      provider: userData.provider
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  // Return your JWT token, not the provider's token
+  res.status(201).json({
+    message: 'Success',
+    user: {
+      ...userData,
+      token: token  // Your JWT token
+    }
+  });
+};
+
+module.exports = handleSignin;
