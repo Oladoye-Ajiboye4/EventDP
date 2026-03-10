@@ -1,7 +1,6 @@
 const userModel = require('../models/user.model')
 const nodemailer = require('nodemailer')
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
 require('dotenv').config()
 
 const manualSignup = (req, res) => {
@@ -20,7 +19,7 @@ const manualSignup = (req, res) => {
             let transporter = nodemailer.createTransport({
                 service: 'gmail',
                 auth: {
-                    user: 'oladoyeajiboye@gmail.com',
+                    user: process.env.EMAIL_USER || 'oladoyeajiboye@gmail.com',
                     pass: process.env.GOOGLE_APP_PASSWORD
                 }
             });

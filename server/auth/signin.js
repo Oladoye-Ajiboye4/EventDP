@@ -2,9 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const handleSignin = (req, res) => {
   const userData = req.body;
-  console.log(req.body);
 
-  // Generate your own JWT token
   const token = jwt.sign(
     {
       email: userData.email,
@@ -15,12 +13,12 @@ const handleSignin = (req, res) => {
     { expiresIn: '7d' }
   );
 
-  // Return your JWT token, not the provider's token
+  // Returns JWT token, not the provider's token
   res.status(201).json({
     message: 'Success',
     user: {
       ...userData,
-      token: token  // Your JWT token
+      token: token 
     }
   });
 };

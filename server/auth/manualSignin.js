@@ -19,7 +19,6 @@ const manualSignin = (req, res) => {
             }
 
             const token = jwt.sign({ email: result.email }, process.env.JWT_SECRET, { expiresIn: '7d' });
-            console.log("Generated Token:", token);
             return res.status(200).json({
                 message: "Login Successful",
                 user: {
