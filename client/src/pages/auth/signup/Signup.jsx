@@ -3,11 +3,11 @@ import { Link, useNavigate } from 'react-router';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { ToastContainer, toast, Bounce } from 'react-toastify';
-import InputField from '../components/InputField';
+import InputField from '../../../components/InputField';
 import { Icon } from '@iconify/react';
 
 import axios from 'axios';
-import firebaseConfig from '../firebase/config'
+import firebaseConfig from '../../../firebase/config'
 import { initializeApp } from "firebase/app"
 import { getAuth, signInWithPopup, GoogleAuthProvider, GithubAuthProvider } from "firebase/auth"
 

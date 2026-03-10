@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 import { ToastContainer, toast, Bounce } from 'react-toastify';
-import InputField from '../components/InputField';
+import InputField from '../../../components/InputField';
 import { Icon } from '@iconify/react';
 import axios from 'axios';
 
