@@ -60,29 +60,30 @@ const Signin = () => {
         .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, 'At least 8 chars (uppercase, lowercase, number, special char)')
         .required('Required'),
     }),
-    onSubmit: values => {
-      axios.post(manualSigninUrl, values)
-        .then((result) => {
-          if (result.status === 200) {
-            const token = result.data.user.token;
-            if (token) {
-              localStorage.setItem('token', token);
-            }
-            notify();
-            localStorage.setItem('user', JSON.stringify(result.data.user));
-            setTimeout(() => {
-              navigate('/dashboard');
-            }, 1000);
-          } else if (result.status === 401 || result.status === 500 || result.status === 404) {
-            errorNotify(result.data.message)
-          } else {
-            errorNotify('Unexpected server response. Try again later')
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const result = await axios.post(manualSigninUrl, values);
+        if (result.status === 200) {
+          const token = result.data.user.token;
+          if (token) {
+            localStorage.setItem('token', token);
           }
-        })
-        .catch((error) => {
-          console.log(error)
-          errorNotify('Invalid credentials')
-        })
+          notify();
+          localStorage.setItem('user', JSON.stringify(result.data.user));
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 1000);
+        } else if (result.status === 401 || result.status === 500 || result.status === 404) {
+          errorNotify(result.data.message)
+        } else {
+          errorNotify('Unexpected server response. Try again later')
+        }
+      } catch (error) {
+        console.log(error)
+        errorNotify('Invalid credentials')
+      } finally {
+        setSubmitting(false);
+      }
     },
   });
 
@@ -255,9 +256,9 @@ const Signin = () => {
             <button
               type='submit'
               className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
-              disabled={!formik.isValid}
+              disabled={!formik.isValid || formik.isSubmitting}
             >
-              Sign In
+              {formik.isSubmitting ? 'Signing In...' : 'Sign In'}
             </button>
           </form>
 

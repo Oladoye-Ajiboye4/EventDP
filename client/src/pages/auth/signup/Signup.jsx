@@ -69,20 +69,21 @@ const Signup = () => {
         .oneOf([Yup.ref('password'), null], 'Passwords must match')
         .required('Required'),
     }),
-    onSubmit: values => {
-      notify();
-      axios.post(manualSignupUrl, values)
-        .then((result) => {
-          if (result.status === 201) {
-            setTimeout(() => {
-              navigate('/signin');
-            }, 1000);
-          }
-        })
-        .catch((error) => {
-          console.log(error)
-          errorNotify('Server error. Try agin later')
-        })
+    onSubmit: async (values, { setSubmitting }) => {
+      try {
+        const result = await axios.post(manualSignupUrl, values);
+        if (result.status === 201) {
+          notify();
+          setTimeout(() => {
+            navigate('/signin');
+          }, 1000);
+        }
+      } catch (error) {
+        console.log(error)
+        errorNotify('Server error. Try agin later')
+      } finally {
+        setSubmitting(false);
+      }
     },
   });
 
@@ -252,9 +253,9 @@ const Signup = () => {
             <button
               type='submit'
               className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
-              disabled={!formik.isValid}
+              disabled={!formik.isValid || formik.isSubmitting}
             >
-              Sign Up
+              {formik.isSubmitting ? 'Creating Account...' : 'Sign Up'}
             </button>
           </form>
 

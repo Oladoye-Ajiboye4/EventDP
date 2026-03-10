@@ -67,29 +67,30 @@ const ResetPassword = () => {
                 .oneOf([Yup.ref('password'), null], 'Passwords must match')
                 .required('Required'),
         }),
-        onSubmit: values => {
-            axios.post(resetPasswordUrl, { token, password: values.password })
-                .then((result) => {
-                    if (result.status === 200) {
-                        notify('Password reset successful!');
-                        setIsSubmitted(true);
-                        setTimeout(() => {
-                            navigate('/signin');
-                        }, 3000);
-                    } else {
-                        errorNotify('Something went wrong. Try again later');
-                    }
-                })
-                .catch((error) => {
-                    if (error.response && error.response.status === 400) {
-                        errorNotify('Invalid or expired token. Request a new reset link');
-                        setTokenValid(false);
-                    } else if (error.response && error.response.data && error.response.data.message) {
-                        errorNotify(error.response.data.message);
-                    } else {
-                        errorNotify('Unable to reset password. Try again later');
-                    }
-                });
+        onSubmit: async (values, { setSubmitting }) => {
+            try {
+                const result = await axios.post(resetPasswordUrl, { token, password: values.password });
+                if (result.status === 200) {
+                    notify('Password reset successful!');
+                    setIsSubmitted(true);
+                    setTimeout(() => {
+                        navigate('/signin');
+                    }, 3000);
+                } else {
+                    errorNotify('Something went wrong. Try again later');
+                }
+            } catch (error) {
+                if (error.response && error.response.status === 400) {
+                    errorNotify('Invalid or expired token. Request a new reset link');
+                    setTokenValid(false);
+                } else if (error.response && error.response.data && error.response.data.message) {
+                    errorNotify(error.response.data.message);
+                } else {
+                    errorNotify('Unable to reset password. Try again later');
+                }
+            } finally {
+                setSubmitting(false);
+            }
         },
     });
 
@@ -134,9 +135,9 @@ const ResetPassword = () => {
                                 <button
                                     type='submit'
                                     className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={!formik.isValid}
+                                    disabled={!formik.isValid || formik.isSubmitting}
                                 >
-                                    Reset Password
+                                    {formik.isSubmitting ? 'Resetting...' : 'Reset Password'}
                                 </button>
                             </form>
 

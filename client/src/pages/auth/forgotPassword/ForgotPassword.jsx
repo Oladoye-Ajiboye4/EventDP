@@ -51,29 +51,30 @@ const ForgotPassword = () => {
                 .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email address')
                 .required('Required'),
         }),
-        onSubmit: values => {
-            axios.post(forgotPasswordUrl, values)
-                .then((result) => {
-                    if (result.status === 200) {
-                        notify('Password reset link sent to your email!');
-                        setIsSubmitted(true);
-                        setTimeout(() => {
-                            navigate('/signin');
-                        }, 3000);
-                    } else {
-                        errorNotify('Something went wrong. Try again later');
-                    }
-                })
-                .catch((error) => {
-                    console.log(error);
-                    if (error.response && error.response.status === 404) {
-                        errorNotify('Email not found in our system');
-                    } else if (error.response && error.response.data && error.response.data.message) {
-                        errorNotify(error.response.data.message);
-                    } else {
-                        errorNotify('Unable to process request. Try again later');
-                    }
-                });
+        onSubmit: async (values, { setSubmitting }) => {
+            try {
+                const result = await axios.post(forgotPasswordUrl, values);
+                if (result.status === 200) {
+                    notify('Password reset link sent to your email!');
+                    setIsSubmitted(true);
+                    setTimeout(() => {
+                        navigate('/signin');
+                    }, 3000);
+                } else {
+                    errorNotify('Something went wrong. Try again later');
+                }
+            } catch (error) {
+                console.log(error);
+                if (error.response && error.response.status === 404) {
+                    errorNotify('Email not found in our system');
+                } else if (error.response && error.response.data && error.response.data.message) {
+                    errorNotify(error.response.data.message);
+                } else {
+                    errorNotify('Unable to process request. Try again later');
+                }
+            } finally {
+                setSubmitting(false);
+            }
         },
     });
 
@@ -117,9 +118,9 @@ const ForgotPassword = () => {
                                 <button
                                     type='submit'
                                     className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
-                                    disabled={!formik.isValid}
+                                    disabled={!formik.isValid || formik.isSubmitting}
                                 >
-                                    Send Reset Link
+                                    {formik.isSubmitting ? 'Sending...' : 'Send Reset Link'}
                                 </button>
                             </form>
 
