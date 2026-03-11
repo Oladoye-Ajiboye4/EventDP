@@ -221,61 +221,163 @@ const Signup = () => {
 
 
   return (
-    // Easil customize the Sign up page to your taste
-    <main className='min-h-screen w-full bg-[radial-gradient(90rem_90rem_at_10%_10%,rgba(251,191,36,0.22),transparent_45%),radial-gradient(70rem_70rem_at_90%_0%,rgba(244,63,94,0.18),transparent_40%),linear-gradient(135deg,#fff7ed_0%,#fff_40%,#fef3c7_100%)] flex items-center justify-center p-4 sm:p-8'>
-      <div className='w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center'>
-        <section className='hidden md:flex flex-col gap-5 p-8 rounded-3xl bg-white/70 backdrop-blur border border-amber-200 shadow-[0_20px_60px_-25px_rgba(120,53,15,0.45)]'>
-          <span className='text-sm font-semibold tracking-widest text-amber-700 uppercase'>Welcome</span>
-          <h1 className='text-4xl font-extrabold text-amber-950 leading-tight'>Create your account in minutes.</h1>
-          <p className='text-amber-900/80 text-base leading-relaxed'>Join the community and keep everything synced across devices. Simple, secure, and built for focus.</p>
-          <div className='flex items-center gap-3 text-amber-900'>
-            <span className='h-2 w-2 rounded-full bg-amber-600' />
-            <span className='text-sm font-medium'>No credit card required</span>
-          </div>
-          <div className='flex items-center gap-3 text-amber-900'>
-            <span className='h-2 w-2 rounded-full bg-amber-600' />
-            <span className='text-sm font-medium'>Free forever plan included</span>
-          </div>
-        </section>
+    <main className="min-h-screen bg-pale-sage flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background blobs */}
+      <div className="absolute top-0 left-0 w-125 h-125 bg-forest-green/8 rounded-full blur-3xl -translate-y-1/3 -translate-x-1/3 animate-float pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-100 h-100 bg-dusty-green/10 rounded-full blur-3xl translate-y-1/3 translate-x-1/3 animate-float-delayed pointer-events-none" />
+      <div className="absolute top-2/3 right-1/4 w-40 h-40 bg-forest-green/5 rounded-full blur-2xl pointer-events-none" />
 
-        <div className='w-full rounded-3xl bg-white/90 backdrop-blur border border-amber-100 shadow-[0_24px_70px_-35px_rgba(120,53,15,0.6)] p-6 sm:p-8'>
-          <form className='flex flex-col gap-4' onSubmit={formik.handleSubmit}>
-            {/* Specify the input the fields  */}
-            <div className='text-center space-y-2'>
-              <h1 className='text-3xl sm:text-4xl font-extrabold text-amber-950'>Sign Up</h1>
-              <p className='text-sm sm:text-base text-amber-900/70'>Start fresh with a clean, focused workspace.</p>
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 overflow-hidden rounded-3xl shadow-2xl shadow-forest-green/15 animate-scale-in my-8">
+        {/* Left Branding Panel */}
+        <div className="hidden lg:flex flex-col bg-forest-green relative overflow-hidden p-12">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4 pointer-events-none" />
+
+          <Link to="/" className="relative z-10 flex items-center gap-2.5 hover:opacity-80 transition-opacity animate-slide-in-left w-fit">
+            <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-lg border border-white/20">
+              E
             </div>
-            <InputField type="text" name="username" placeholder="Username" formik={formik} />
-            <InputField type="text" name="email" placeholder="Email" formik={formik} />
-            <InputField type="password" name="password" placeholder="Password" formik={formik} />
-            <InputField type="password" name="confirmPassword" placeholder="Confirm Password" formik={formik} />
+            <span className="font-bold text-xl text-white">EventDP</span>
+          </Link>
+
+          <div className="relative z-10 mt-auto">
+            <div className="animate-fade-in-up">
+              <span className="inline-block text-xs font-semibold tracking-widest text-white/60 uppercase mb-4">Get Started</span>
+              <h2 className="text-4xl font-bold text-white leading-tight">
+                Create your <br />
+                <span className="text-white/80">free account today</span>
+              </h2>
+              <p className="mt-4 text-white/65 text-base leading-relaxed">
+                Join thousands of event organizers using EventDP to create stunning branded frames that attendees love to share.
+              </p>
+            </div>
+
+            <div className="mt-8 space-y-4">
+              {[
+                { icon: "mdi:credit-card-off-outline", text: "No credit card required" },
+                { icon: "mdi:image-multiple-outline", text: "1,000+ event frame templates" },
+                { icon: "mdi:share-variant-outline", text: "Share-ready in seconds" },
+              ].map((item, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-3 animate-fade-in-up"
+                  style={{ animationDelay: `${(i + 2) * 100}ms` }}
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                    <Icon icon={item.icon} className="text-white" width="16" height="16" />
+                  </div>
+                  <span className="text-white/75 text-sm font-medium">{item.text}</span>
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="mt-10 p-4 rounded-2xl bg-white/10 border border-white/15 animate-fade-in-up"
+              style={{ animationDelay: '500ms' }}
+            >
+              <p className="text-white text-sm font-semibold">🚀 Join 2,000+ event organizers</p>
+              <p className="text-white/60 text-xs mt-1 leading-relaxed">
+                Create your first branded frame in under 5 minutes. No design skills needed.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Form Panel */}
+        <div className="flex flex-col justify-center bg-white p-8 sm:p-10 animate-slide-in-right">
+          <Link to="/" className="flex lg:hidden items-center gap-2 mb-6 hover:opacity-80 transition-opacity w-fit">
+            <div className="w-8 h-8 rounded-lg bg-forest-green flex items-center justify-center text-white font-bold text-sm">E</div>
+            <span className="font-bold text-xl text-dark-slate">EventDP</span>
+          </Link>
+
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-dark-slate">Create account</h1>
+            <p className="text-text-muted mt-1.5 text-sm">Start building amazing event experiences today.</p>
+          </div>
+
+          <form className="flex flex-col gap-3.5" onSubmit={formik.handleSubmit}>
+            <InputField
+              type="text"
+              name="username"
+              placeholder="your_username"
+              formik={formik}
+              label="Username"
+            />
+            <InputField
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              formik={formik}
+              label="Email address"
+            />
+            <InputField
+              type="password"
+              name="password"
+              placeholder="Create a strong password"
+              formik={formik}
+              label="Password"
+            />
+            <InputField
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm your password"
+              formik={formik}
+              label="Confirm password"
+            />
 
             <button
-              type='submit'
-              className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
+              type="submit"
+              className="w-full bg-forest-green hover:bg-[#48614F] active:scale-[0.98] text-white py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-forest-green/25 hover:shadow-xl hover:shadow-forest-green/30 disabled:opacity-50 disabled:cursor-not-allowed mt-1.5 group"
               disabled={!formik.isValid || formik.isSubmitting}
             >
-              {formik.isSubmitting ? 'Creating Account...' : 'Sign Up'}
+              {formik.isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Creating account...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  Create Account
+                  <Icon icon="mdi:arrow-right" className="group-hover:translate-x-1 transition-transform" width="18" height="18" />
+                </span>
+              )}
             </button>
           </form>
 
-          <div className='mt-6 flex flex-col sm:flex-row gap-3 font-semibold text-base text-amber-950'>
-            <Link className='flex-1 text-center bg-amber-700 text-white py-3 rounded-xl hover:bg-amber-800 transition' to='/signin'>Sign In</Link>
-            <Link className='flex-1 text-center bg-amber-100 text-amber-900 py-3 rounded-xl hover:bg-amber-200 transition' to='/'>Go Home</Link>
+          <div className="flex items-center gap-4 my-5">
+            <div className="flex-1 h-px bg-gray-100" />
+            <span className="text-xs text-text-muted font-medium uppercase tracking-wider">or sign up with</span>
+            <div className="flex-1 h-px bg-gray-100" />
           </div>
 
-          <div className='mt-6 flex flex-col gap-3'>
-            <button type='button' onClick={() => googleSignUpBtn()} className='flex gap-3 justify-center items-center font-semibold bg-white border border-amber-200 py-3 rounded-xl hover:bg-amber-50 transition text-amber-950'>
-              <Icon icon="material-icon-theme:google" width="22" height="22" />
-              <span>Continue with Google</span>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => googleSignUpBtn()}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-200 hover:border-dusty-green rounded-xl text-dark-slate text-sm font-medium hover:bg-pale-sage/50 active:scale-[0.97] transition-all duration-200"
+            >
+              <Icon icon="flat-color-icons:google" width="20" height="20" />
+              Google
             </button>
-            <button onClick={() => { githubSignUpBtn() }} type='button' className='flex gap-3 justify-center items-center font-semibold bg-amber-950 py-3 rounded-xl hover:bg-amber-900 transition text-white'>
-              <Icon icon="mdi:github" width="22" height="22" />
-              <span>Continue with GitHub</span>
+            <button
+              type="button"
+              onClick={() => githubSignUpBtn()}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 border border-gray-200 hover:border-dark-slate rounded-xl text-dark-slate text-sm font-medium hover:bg-gray-50 active:scale-[0.97] transition-all duration-200"
+            >
+              <Icon icon="mdi:github" width="20" height="20" />
+              GitHub
             </button>
           </div>
+
+          <p className="text-center text-sm text-text-muted mt-6">
+            Already have an account?{' '}
+            <Link to="/signin" className="text-forest-green font-semibold hover:underline underline-offset-2 transition-colors">
+              Sign in
+            </Link>
+          </p>
         </div>
       </div>
+
       <ToastContainer position="top-center" theme="light" transition={Bounce} />
     </main>
   )

@@ -4,12 +4,13 @@ import './index.css'
 import App from './App.jsx'
 import { createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
-import Homepage from './pages/Homepage.jsx';
-import Signup from './pages/Signup.jsx';
-import Signin from './pages/Signin.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import ForgotPassword from './pages/ForgotPassword.jsx';
-import ResetPassword from './pages/ResetPassword.jsx';
+import Homepage from "./pages/homepage/src/Homepage.jsx";
+import Signup from "./pages/auth/signup/Signup.jsx";
+import Signin from "./pages/auth/signin/Signin.jsx";
+import Dashboard from "./pages/dashboard/Dashboard.jsx";
+import ForgotPassword from "./pages/auth/forgotPassword/ForgotPassword.jsx";
+import ResetPassword from "./pages/auth/resetPassword/ResetPassword.jsx";
+
 
 const router = createBrowserRouter([
   {

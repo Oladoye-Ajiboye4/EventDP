@@ -15,7 +15,7 @@ const cors = require('cors')
 app.use(cors())
 app.use(express.json())
 
-const PORT = process.env.port || 7890;
+const PORT = process.env.port || 7687;
 
 app.post('/handle-signup', handleSignup)
 app.post('/handle-signin', handleSignin)

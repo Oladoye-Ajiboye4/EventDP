@@ -95,89 +95,156 @@ const ResetPassword = () => {
     });
 
     return (
-        <main className='min-h-screen w-full bg-[radial-gradient(90rem_90rem_at_10%_10%,rgba(251,191,36,0.22),transparent_45%),radial-gradient(70rem_70rem_at_90%_0%,rgba(244,63,94,0.18),transparent_40%),linear-gradient(135deg,#fff7ed_0%,#fff_40%,#fef3c7_100%)] flex items-center justify-center p-4 sm:p-8'>
-            <div className='w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center'>
-                <section className='hidden md:flex flex-col gap-5 p-8 rounded-3xl bg-white/70 backdrop-blur border border-amber-200 shadow-[0_20px_60px_-25px_rgba(120,53,15,0.45)]'>
-                    <span className='text-sm font-semibold tracking-widest text-amber-700 uppercase'>Create New Password</span>
-                    <h1 className='text-4xl font-extrabold text-amber-950 leading-tight'>Set a strong, secure password.</h1>
-                    <p className='text-amber-900/80 text-base leading-relaxed'>Choose a password that's unique and hasn't been used before. Make it strong to keep your account safe.</p>
-                    <div className='flex items-center gap-3 text-amber-900'>
-                        <Icon icon="mdi:shield-lock" width="24" height="24" className='text-amber-700' />
-                        <span className='text-sm font-medium'>At least 8 characters</span>
-                    </div>
-                    <div className='flex items-center gap-3 text-amber-900'>
-                        <Icon icon="mdi:format-letter-case" width="24" height="24" className='text-amber-700' />
-                        <span className='text-sm font-medium'>Uppercase and lowercase letters</span>
-                    </div>
-                    <div className='flex items-center gap-3 text-amber-900'>
-                        <Icon icon="mdi:numeric" width="24" height="24" className='text-amber-700' />
-                        <span className='text-sm font-medium'>Numbers and special characters</span>
-                    </div>
-                </section>
+        <main className="min-h-screen bg-pale-sage flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Animated background blobs */}
+            <div className="absolute top-0 right-0 w-112.5 h-112.5 bg-forest-green/8 rounded-full blur-3xl -translate-y-1/3 translate-x-1/3 animate-float pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-95 h-95 bg-dusty-green/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/3 animate-float-delayed pointer-events-none" />
 
-                <div className='w-full rounded-3xl bg-white/90 backdrop-blur border border-amber-100 shadow-[0_24px_70px_-35px_rgba(120,53,15,0.6)] p-6 sm:p-8'>
+            <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-2 overflow-hidden rounded-3xl shadow-2xl shadow-forest-green/15 animate-scale-in">
+                {/* Left Branding Panel */}
+                <div className="hidden lg:flex flex-col bg-forest-green relative overflow-hidden p-12">
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/4 pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/3 -translate-x-1/4 pointer-events-none" />
+
+                    <Link to="/" className="relative z-10 flex items-center gap-2.5 hover:opacity-80 transition-opacity animate-slide-in-left w-fit">
+                        <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white font-bold text-lg border border-white/20">
+                            E
+                        </div>
+                        <span className="font-bold text-xl text-white">EventDP</span>
+                    </Link>
+
+                    <div className="relative z-10 mt-auto">
+                        <div className="animate-fade-in-up">
+                            <span className="inline-block text-xs font-semibold tracking-widest text-white/60 uppercase mb-4">New Password</span>
+                            <h2 className="text-4xl font-bold text-white leading-tight">
+                                Set a strong <br />
+                                <span className="text-white/80">new password</span>
+                            </h2>
+                            <p className="mt-4 text-white/65 text-base leading-relaxed">
+                                Create a strong, unique password to keep your EventDP account secure.
+                            </p>
+                        </div>
+
+                        <div className="mt-8 space-y-4">
+                            {[
+                                { icon: "mdi:shield-lock-outline", text: "At least 8 characters long" },
+                                { icon: "mdi:format-letter-case", text: "Mix uppercase & lowercase letters" },
+                                { icon: "mdi:asterisk", text: "Include numbers & special characters" },
+                            ].map((item, i) => (
+                                <div
+                                    key={i}
+                                    className="flex items-center gap-3 animate-fade-in-up"
+                                    style={{ animationDelay: `${(i + 2) * 100}ms` }}
+                                >
+                                    <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+                                        <Icon icon={item.icon} className="text-white" width="16" height="16" />
+                                    </div>
+                                    <span className="text-white/75 text-sm font-medium">{item.text}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Form Panel */}
+                <div className="flex flex-col justify-center bg-white p-8 sm:p-12 animate-slide-in-right min-h-130">
+                    <Link to="/" className="flex lg:hidden items-center gap-2 mb-8 hover:opacity-80 transition-opacity w-fit">
+                        <div className="w-8 h-8 rounded-lg bg-forest-green flex items-center justify-center text-white font-bold text-sm">E</div>
+                        <span className="font-bold text-xl text-dark-slate">EventDP</span>
+                    </Link>
+
                     {!isSubmitted && tokenValid ? (
                         <>
-                            <form className='flex flex-col gap-4' onSubmit={formik.handleSubmit}>
-                                <div className='text-center space-y-2'>
-                                    <div className='flex justify-center mb-4'>
-                                        <div className='bg-amber-100 p-4 rounded-full'>
-                                            <Icon icon="mdi:lock-reset" width="40" height="40" className='text-amber-700' />
-                                        </div>
-                                    </div>
-                                    <h1 className='text-3xl sm:text-4xl font-extrabold text-amber-950'>Reset Password</h1>
-                                    <p className='text-sm sm:text-base text-amber-900/70'>Enter your new password below.</p>
+                            <div className="mb-8">
+                                <div className="w-14 h-14 rounded-2xl bg-forest-green/10 flex items-center justify-center mb-6">
+                                    <Icon icon="mdi:lock-reset" className="text-forest-green" width="28" height="28" />
                                 </div>
+                                <h1 className="text-3xl font-bold text-dark-slate">Reset password</h1>
+                                <p className="text-text-muted mt-1.5 text-sm">Enter your new password below.</p>
+                            </div>
 
-                                <InputField type="password" name="password" placeholder="New Password" formik={formik} />
-                                <InputField type="password" name="confirmPassword" placeholder="Confirm New Password" formik={formik} />
+                            <form className="flex flex-col gap-4" onSubmit={formik.handleSubmit}>
+                                <InputField
+                                    type="password"
+                                    name="password"
+                                    placeholder="Create a strong password"
+                                    formik={formik}
+                                    label="New password"
+                                />
+                                <InputField
+                                    type="password"
+                                    name="confirmPassword"
+                                    placeholder="Confirm your new password"
+                                    formik={formik}
+                                    label="Confirm password"
+                                />
 
                                 <button
-                                    type='submit'
-                                    className='bg-amber-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-amber-200/60 hover:bg-amber-800 transition disabled:opacity-50 disabled:cursor-not-allowed'
+                                    type="submit"
+                                    className="w-full bg-forest-green hover:bg-[#48614F] active:scale-[0.98] text-white py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-forest-green/25 hover:shadow-forest-green/30 disabled:opacity-50 disabled:cursor-not-allowed mt-1 group"
                                     disabled={!formik.isValid || formik.isSubmitting}
                                 >
-                                    {formik.isSubmitting ? 'Resetting...' : 'Reset Password'}
+                                    {formik.isSubmitting ? (
+                                        <span className="flex items-center justify-center gap-2">
+                                            <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                            Resetting...
+                                        </span>
+                                    ) : (
+                                        <span className="flex items-center justify-center gap-2">
+                                            Reset Password
+                                            <Icon icon="mdi:check" className="group-hover:scale-110 transition-transform" width="18" height="18" />
+                                        </span>
+                                    )}
                                 </button>
                             </form>
 
-                            <div className='mt-6 flex flex-col sm:flex-row gap-3 font-semibold text-base text-amber-950'>
-                                <Link className='flex-1 text-center bg-amber-100 text-amber-900 py-3 rounded-xl hover:bg-amber-200 transition' to='/signin'>
-                                    Back to Sign In
+                            <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                                <Link
+                                    to="/signin"
+                                    className="flex-1 text-center py-2.5 px-4 border border-gray-200 hover:border-forest-green rounded-xl text-dark-slate text-sm font-medium hover:bg-pale-sage/40 active:scale-[0.97] transition-all duration-200"
+                                >
+                                    ← Back to Sign In
                                 </Link>
-                                <Link className='flex-1 text-center bg-amber-100 text-amber-900 py-3 rounded-xl hover:bg-amber-200 transition' to='/'>
+                                <Link
+                                    to="/"
+                                    className="flex-1 text-center py-2.5 px-4 border border-gray-200 hover:border-gray-300 rounded-xl text-dark-slate text-sm font-medium hover:bg-gray-50 active:scale-[0.97] transition-all duration-200"
+                                >
                                     Go Home
                                 </Link>
                             </div>
                         </>
                     ) : isSubmitted ? (
-                        <div className='flex flex-col gap-4 items-center text-center'>
-                            <div className='bg-green-100 p-4 rounded-full'>
-                                <Icon icon="mdi:check-circle" width="40" height="40" className='text-green-700' />
+                        <div className="flex flex-col items-center text-center gap-5 animate-fade-in-up">
+                            <div className="w-16 h-16 rounded-full bg-forest-green/10 flex items-center justify-center animate-scale-in">
+                                <Icon icon="mdi:check-circle-outline" className="text-forest-green" width="32" height="32" />
                             </div>
-                            <h2 className='text-2xl font-extrabold text-amber-950'>Password Reset Successful!</h2>
-                            <p className='text-amber-900/70'>
-                                Your password has been changed successfully. You can now sign in with your new password.
-                            </p>
+                            <div>
+                                <h2 className="text-2xl font-bold text-dark-slate">Password reset!</h2>
+                                <p className="text-text-muted mt-2 text-sm leading-relaxed">
+                                    Your password has been changed successfully. You can now sign in with your new password.
+                                </p>
+                            </div>
                             <Link
-                                to='/signin'
-                                className='mt-4 w-full bg-amber-700 text-white py-3 rounded-xl hover:bg-amber-800 transition font-semibold'
+                                to="/signin"
+                                className="w-full bg-forest-green hover:bg-[#48614F] text-white py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-forest-green/25 text-center text-sm"
                             >
-                                Sign In Now
+                                Sign In Now →
                             </Link>
                         </div>
                     ) : (
-                        <div className='flex flex-col gap-4 items-center text-center'>
-                            <div className='bg-red-100 p-4 rounded-full'>
-                                <Icon icon="mdi:alert-circle" width="40" height="40" className='text-red-700' />
+                        <div className="flex flex-col items-center text-center gap-5 animate-fade-in-up">
+                            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center animate-scale-in">
+                                <Icon icon="mdi:alert-circle-outline" className="text-red-500" width="32" height="32" />
                             </div>
-                            <h2 className='text-2xl font-extrabold text-amber-950'>Invalid or Expired Link</h2>
-                            <p className='text-amber-900/70'>
-                                This password reset link is invalid or has expired. Please request a new one.
-                            </p>
+                            <div>
+                                <h2 className="text-2xl font-bold text-dark-slate">Invalid or expired link</h2>
+                                <p className="text-text-muted mt-2 text-sm leading-relaxed">
+                                    This password reset link is invalid or has expired. Please request a new one.
+                                </p>
+                            </div>
                             <Link
-                                to='/forgot-password'
-                                className='mt-4 w-full bg-amber-700 text-white py-3 rounded-xl hover:bg-amber-800 transition font-semibold'
+                                to="/forgot-password"
+                                className="w-full bg-forest-green hover:bg-[#48614F] text-white py-3 rounded-xl font-semibold transition-all duration-200 shadow-lg shadow-forest-green/25 text-center text-sm"
                             >
                                 Request New Link
                             </Link>
@@ -185,6 +252,7 @@ const ResetPassword = () => {
                     )}
                 </div>
             </div>
+
             <ToastContainer position="top-center" theme="light" transition={Bounce} />
         </main>
     );
