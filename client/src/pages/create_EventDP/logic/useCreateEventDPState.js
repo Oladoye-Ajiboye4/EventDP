@@ -5,6 +5,7 @@ import useHistoryStack from './useHistoryStack'
 
 const createSnapshot = (state) => ({
     zoneShape: state.zoneShape,
+    committedZone: state.committedZone,
     bleedGuides: state.bleedGuides,
     backgroundOpacity: state.backgroundOpacity,
     cornerRadius: state.cornerRadius,
@@ -82,6 +83,7 @@ const useCreateEventDPState = () => {
         redo,
     } = useHistoryStack(createSnapshot({
         zoneShape,
+        committedZone,
         bleedGuides,
         backgroundOpacity,
         cornerRadius,
@@ -116,6 +118,7 @@ const useCreateEventDPState = () => {
     const persistSnapshot = (overrides = {}) => {
         pushState(createSnapshot({
             zoneShape,
+            committedZone,
             bleedGuides,
             backgroundOpacity,
             cornerRadius,
@@ -222,6 +225,7 @@ const useCreateEventDPState = () => {
                     width: img.width,
                     height: img.height,
                     name: file.name,
+                    file,
                 })
             }
             img.src = reader.result
@@ -309,6 +313,7 @@ const useCreateEventDPState = () => {
             return
         }
         setZoneShape(snapshot.zoneShape)
+        setCommittedZone(snapshot.committedZone || null)
         setBleedGuides(snapshot.bleedGuides)
         setBackgroundOpacity(snapshot.backgroundOpacity)
         setCornerRadius(snapshot.cornerRadius)
@@ -355,6 +360,38 @@ const useCreateEventDPState = () => {
         const snapshot = redo()
         restoreFromSnapshot(snapshot)
     }
+
+    const draftSnapshot = useMemo(() => ({
+        zoneShape,
+        committedZone,
+        textZones,
+        activeTextZoneIndex,
+        bleedGuides,
+        backgroundOpacity,
+        cornerRadius,
+        borderStyle,
+        snapToGrid,
+        allowGuestText,
+        activeCanvasTool,
+        guestTextStyle,
+        zoom,
+        activeMenu,
+    }), [
+        zoneShape,
+        committedZone,
+        textZones,
+        activeTextZoneIndex,
+        bleedGuides,
+        backgroundOpacity,
+        cornerRadius,
+        borderStyle,
+        snapToGrid,
+        allowGuestText,
+        activeCanvasTool,
+        guestTextStyle,
+        zoom,
+        activeMenu,
+    ])
 
     return {
         activeMenu,
@@ -404,6 +441,7 @@ const useCreateEventDPState = () => {
         removeUploadedImage,
         canvasDimensions,
         displayedCanvasSize,
+        draftSnapshot,
     }
 }
 
