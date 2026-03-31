@@ -2,9 +2,18 @@ import React from 'react'
 import { Icon } from '@iconify/react'
 import { Link } from 'react-router'
 
-const TopNav = ({ showGenerateLink, onGenerateLink, isGenerating, isPublished }) => {
+const TopNav = ({
+    showGenerateLink,
+    onGenerateLink,
+    isGenerating,
+    isPublished,
+    projectTitle,
+    onProjectTitleChange,
+    titleError,
+    isTitleLocked,
+}) => {
     return (
-        <nav className='h-16 px-4 sm:px-6 flex items-center justify-between bg-white border-b border-dusty-green/25 z-40 animate-fade-in'>
+        <nav className='min-h-16 px-4 sm:px-6 py-2 flex items-center justify-between bg-white border-b border-dusty-green/25 z-40 animate-fade-in gap-3'>
             <div className='flex items-center gap-6'>
                 <h1 className='font-extrabold text-xl tracking-tight text-forest-green'>EventDP</h1>
                 <Link
@@ -13,6 +22,19 @@ const TopNav = ({ showGenerateLink, onGenerateLink, isGenerating, isPublished })
                 >
                     Back to Dashboard
                 </Link>
+            </div>
+
+            <div className='hidden md:flex flex-col min-w-70 max-w-105 w-full'>
+                <input
+                    type='text'
+                    value={projectTitle}
+                    onChange={(event) => onProjectTitleChange(event.target.value)}
+                    maxLength={80}
+                    placeholder='Project title (e.g. Tech Summit 2026)'
+                    disabled={isTitleLocked}
+                    className='h-10 rounded-xl border border-dusty-green/35 px-3 text-sm text-dark-slate outline-none focus:border-forest-green disabled:opacity-70 disabled:cursor-not-allowed'
+                />
+                {titleError ? <span className='text-[11px] text-red-600 mt-1'>{titleError}</span> : null}
             </div>
 
             <div className='flex items-center gap-3'>

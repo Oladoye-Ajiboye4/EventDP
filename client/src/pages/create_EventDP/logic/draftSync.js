@@ -43,22 +43,23 @@ export const uploadToCloudinary = async ({ signatureData, file }) => {
     }
 }
 
-export const createDraft = async ({ token, asset, editor }) => {
+export const createDraft = async ({ token, asset, editor, title }) => {
     const response = await axios.post(
         `${BASE_URL}createEventDP/drafts`,
-        { asset, editor },
+        { asset, editor, title },
         withAuthHeader(token),
     )
 
     return response.data
 }
 
-export const autosaveDraft = async ({ token, draftId, editor, baseRevision }) => {
+export const autosaveDraft = async ({ token, draftId, editor, baseRevision, title }) => {
     const response = await axios.patch(
         `${BASE_URL}createEventDP/drafts/${draftId}/autosave`,
         {
             editor,
             baseRevision,
+            title,
             lastClientEditAt: new Date().toISOString(),
         },
         withAuthHeader(token),
@@ -67,12 +68,14 @@ export const autosaveDraft = async ({ token, draftId, editor, baseRevision }) =>
     return response.data
 }
 
-export const publishDraft = async ({ token, draftId, editor, baseRevision }) => {
+export const publishDraft = async ({ token, draftId, editor, baseRevision, title, expiresAt }) => {
     const response = await axios.post(
         `${BASE_URL}createEventDP/drafts/${draftId}/publish`,
         {
             editor,
             baseRevision,
+            title,
+            expiresAt,
             lastClientEditAt: new Date().toISOString(),
         },
         withAuthHeader(token),
@@ -81,7 +84,10 @@ export const publishDraft = async ({ token, draftId, editor, baseRevision }) => 
     return response.data
 }
 
-export const getPublicEventDP = async ({ slug }) => {
-    const response = await axios.get(`${BASE_URL}createEventDP/public/${slug}`)
+export const getPublicEventDP = async ({ slug, projectSlug, accessKey }) => {
+    const endpoint = accessKey
+        ? `${BASE_URL}createEventDP/public/${projectSlug || 'eventdp'}/${accessKey}`
+        : `${BASE_URL}createEventDP/public/${slug}`
+    const response = await axios.get(endpoint)
     return response.data
 }

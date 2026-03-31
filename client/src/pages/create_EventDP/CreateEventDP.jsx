@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
+import { z } from 'zod'
 import TopNav from './components/TopNav'
 import StudioSidebar from './components/StudioSidebar'
 import CanvasToolbar from './components/CanvasToolbar'
@@ -16,6 +17,17 @@ import {
     uploadToCloudinary,
 } from './logic/draftSync'
 
+const titleSchema = z
+    .string()
+    .trim()
+    .min(1, 'Project title is required')
+    .max(80, 'Project title must be at most 80 characters')
+
+const publishExpirySchema = z
+    .string()
+    .min(1, 'Select when the link should expire')
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), 'Invalid expiry date')
+
 const CreateEventDP = () => {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
     const [draftMeta, setDraftMeta] = useState({ draftId: null, revision: 0, uploadAsset: null })
@@ -23,6 +35,10 @@ const CreateEventDP = () => {
     const [showPublishConfirm, setShowPublishConfirm] = useState(false)
     const [showShareModal, setShowShareModal] = useState(false)
     const [shareLink, setShareLink] = useState('')
+    const [projectTitle, setProjectTitle] = useState('Untitled Project')
+    const [titleError, setTitleError] = useState('')
+    const [linkExpiresAt, setLinkExpiresAt] = useState('')
+    const [publishError, setPublishError] = useState('')
 
     const uploadKeyRef = useRef('')
     const autosaveTimerRef = useRef(null)
@@ -31,6 +47,44 @@ const CreateEventDP = () => {
     const saveInFlightRef = useRef(false)
     const [lastSavedTime, setLastSavedTime] = useState(null)
     const isEditorLocked = publishState === 'published' || publishState === 'publishing'
+
+    const normalizeTitle = (value) => value.trim().replace(/\s+/g, ' ')
+
+    const getValidTitle = () => {
+        const parsed = titleSchema.safeParse(projectTitle)
+        if (!parsed.success) {
+            const fallback = 'Untitled Project'
+            setTitleError(parsed.error.issues?.[0]?.message || 'Invalid project title')
+            return fallback
+        }
+
+        setTitleError('')
+        return normalizeTitle(parsed.data)
+    }
+
+    const getValidPublishExpiry = () => {
+        const parsed = publishExpirySchema.safeParse(linkExpiresAt)
+        if (!parsed.success) {
+            setPublishError(parsed.error.issues?.[0]?.message || 'Set a valid expiry date')
+            return null
+        }
+
+        const selectedDate = new Date(parsed.data)
+        const now = new Date()
+        if (selectedDate <= now) {
+            setPublishError('Expiry date must be in the future')
+            return null
+        }
+
+        const maxAllowed = new Date(now.getTime() + (365 * 24 * 60 * 60 * 1000))
+        if (selectedDate > maxAllowed) {
+            setPublishError('Expiry date cannot exceed 365 days')
+            return null
+        }
+
+        setPublishError('')
+        return selectedDate.toISOString()
+    }
 
     const {
         activeMenu,
@@ -90,6 +144,10 @@ const CreateEventDP = () => {
             setShowPublishConfirm(false)
             setShowShareModal(false)
             setShareLink('')
+            setProjectTitle('Untitled Project')
+            setTitleError('')
+            setLinkExpiresAt('')
+            setPublishError('')
         }
     }, [uploadedImage])
 
@@ -135,7 +193,12 @@ const CreateEventDP = () => {
                     token,
                     asset: uploadAsset,
                     editor: draftSnapshot,
+                    title: getValidTitle(),
                 })
+
+                if (draftResponse?.draft?.title) {
+                    setProjectTitle(draftResponse.draft.title)
+                }
 
                 setDraftMeta({
                     draftId: draftResponse.draft._id,
@@ -183,6 +246,7 @@ const CreateEventDP = () => {
                     draftId: latestDraftMetaRef.current.draftId,
                     editor: draftSnapshot,
                     baseRevision: latestDraftMetaRef.current.revision,
+                    title: getValidTitle(),
                 })
 
                 setDraftMeta((prev) => ({
@@ -255,11 +319,22 @@ const CreateEventDP = () => {
         if (!draftMeta.draftId || !uploadedImage || isEditorLocked) {
             return
         }
+        if (!linkExpiresAt) {
+            const defaultExpiry = new Date(Date.now() + (30 * 24 * 60 * 60 * 1000))
+            const localISO = new Date(defaultExpiry.getTime() - (defaultExpiry.getTimezoneOffset() * 60000)).toISOString().slice(0, 16)
+            setLinkExpiresAt(localISO)
+        }
+        setPublishError('')
         setShowPublishConfirm(true)
     }
 
     const handlePublish = async () => {
         if (!draftMeta.draftId || !uploadedImage) {
+            return
+        }
+
+        const validExpiryISO = getValidPublishExpiry()
+        if (!validExpiryISO) {
             return
         }
 
@@ -285,6 +360,7 @@ const CreateEventDP = () => {
                     draftId: latestDraftMetaRef.current.draftId,
                     editor: draftSnapshot,
                     baseRevision: latestDraftMetaRef.current.revision,
+                    title: getValidTitle(),
                 })
 
                 setDraftMeta((prev) => ({
@@ -304,6 +380,8 @@ const CreateEventDP = () => {
                 draftId: latestDraftMetaRef.current.draftId,
                 editor: draftSnapshot,
                 baseRevision: latestDraftMetaRef.current.revision,
+                title: getValidTitle(),
+                expiresAt: validExpiryISO,
             })
 
             const nextRevision = publishResponse.revision
@@ -319,6 +397,7 @@ const CreateEventDP = () => {
         } catch (error) {
             console.error('Error publishing EventDP:', error)
             setPublishState('draft')
+            setPublishError(error?.response?.data?.message || 'Failed to publish EventDP')
         } finally {
             saveInFlightRef.current = false
         }
@@ -331,7 +410,24 @@ const CreateEventDP = () => {
                 onGenerateLink={handleGenerateLinkClick}
                 isGenerating={publishState === 'publishing'}
                 isPublished={publishState === 'published'}
+                projectTitle={projectTitle}
+                onProjectTitleChange={setProjectTitle}
+                titleError={titleError}
+                isTitleLocked={isEditorLocked}
             />
+
+            <div className='md:hidden px-4 py-2 border-b border-dusty-green/20 bg-white'>
+                <input
+                    type='text'
+                    value={projectTitle}
+                    onChange={(event) => setProjectTitle(event.target.value)}
+                    maxLength={80}
+                    placeholder='Project title'
+                    disabled={isEditorLocked}
+                    className='h-10 w-full rounded-xl border border-dusty-green/35 px-3 text-sm text-dark-slate outline-none focus:border-forest-green disabled:opacity-70 disabled:cursor-not-allowed'
+                />
+                {titleError ? <p className='text-[11px] text-red-600 mt-1'>{titleError}</p> : null}
+            </div>
 
             {/* Autosave Status Indicator */}
             <div className='fixed top-20 right-6 z-30 flex items-center gap-1.5 text-xs font-medium'>
@@ -492,6 +588,18 @@ const CreateEventDP = () => {
                         <p className='text-sm text-dark-slate/70'>
                             This will lock canvas editing and settings for this EventDP. You can still share the generated link anytime.
                         </p>
+                        <div>
+                            <label className='block text-sm font-semibold text-dark-slate mb-1'>Link expires at</label>
+                            <input
+                                type='datetime-local'
+                                value={linkExpiresAt}
+                                onChange={(event) => setLinkExpiresAt(event.target.value)}
+                                className='w-full h-10 rounded-xl border border-dusty-green/35 px-3 text-sm text-dark-slate outline-none focus:border-forest-green'
+                                min={new Date(Date.now() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16)}
+                            />
+                            <p className='text-[11px] text-dark-slate/60 mt-1'>Maximum expiry window is 365 days.</p>
+                        </div>
+                        {publishError ? <p className='text-sm text-red-600'>{publishError}</p> : null}
                         <div className='flex items-center justify-end gap-2'>
                             <button
                                 type='button'

@@ -1,9 +1,25 @@
 const EventDPDraft = require('../../models/eventDPDraft.model')
+const { z } = require('zod')
+
+const autosaveSchema = z.object({
+    editor: z.record(z.string(), z.unknown()).optional(),
+    baseRevision: z.number().int().optional(),
+    lastClientEditAt: z.string().optional(),
+    title: z.string().trim().min(1).max(80).optional(),
+})
 
 const autosaveDraft = async (req, res) => {
     try {
         const { draftId } = req.params
-        const { editor, baseRevision, lastClientEditAt } = req.body
+        const parsed = autosaveSchema.safeParse(req.body)
+        if (!parsed.success) {
+            return res.status(400).json({
+                status: false,
+                message: parsed.error.issues?.[0]?.message || 'Invalid autosave payload',
+            })
+        }
+
+        const { editor, baseRevision, lastClientEditAt, title } = parsed.data
 
         const draft = await EventDPDraft.findOne({ _id: draftId, userEmail: req.user.email })
 
@@ -27,6 +43,9 @@ const autosaveDraft = async (req, res) => {
         }
 
         draft.editor = editor || draft.editor
+        if (title) {
+            draft.title = title
+        }
         draft.lastClientEditAt = lastClientEditAt ? new Date(lastClientEditAt) : new Date()
         draft.lastServerSaveAt = new Date()
         draft.revision += 1

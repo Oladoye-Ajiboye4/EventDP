@@ -20,6 +20,7 @@ const historyEntrySchema = new mongoose.Schema({
 
 const eventDPDraftSchema = new mongoose.Schema({
     userEmail: { type: String, required: true, index: true },
+    title: { type: String, default: 'Untitled Project', trim: true, maxlength: 80, index: true },
     status: { type: String, enum: ['draft', 'published'], default: 'draft' },
     asset: {
         publicId: { type: String, required: true },
@@ -51,6 +52,9 @@ const eventDPDraftSchema = new mongoose.Schema({
     },
     publish: {
         slug: { type: String, default: '', index: true },
+        projectSlug: { type: String, default: '', index: true },
+        accessKey: { type: String, default: '', index: true },
+        expiresAt: { type: Date, default: null, index: true },
         publicUrl: { type: String, default: '' },
         publishedAt: { type: Date, default: null },
     },
@@ -59,6 +63,14 @@ const eventDPDraftSchema = new mongoose.Schema({
     lastClientEditAt: { type: Date, default: Date.now },
     lastServerSaveAt: { type: Date, default: Date.now },
 }, { timestamps: true })
+
+eventDPDraftSchema.index(
+    { title: 'text', 'asset.originalFilename': 'text' },
+    {
+        name: 'title_filename_text_idx',
+        weights: { title: 10, 'asset.originalFilename': 4 },
+    },
+)
 
 const EventDPDraft = mongoose.model('EventDPDraft', eventDPDraftSchema)
 

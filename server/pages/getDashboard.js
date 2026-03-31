@@ -1,6 +1,13 @@
 const userModel = require('../models/user.model')
 const EventDPDraft = require('../models/eventDPDraft.model')
 const jwt = require('jsonwebtoken')
+const { z } = require('zod')
+
+const MAX_HOST_EVENTS = 5
+
+const dashboardQuerySchema = z.object({
+    search: z.string().trim().max(80).optional(),
+})
 
 const getDashboard = (req, res) => {
     const authHeader = req.headers.authorization
@@ -24,26 +31,64 @@ const getDashboard = (req, res) => {
 
         console.log(result);
         const email = result.email
+        const parsedQuery = dashboardQuerySchema.safeParse(req.query || {})
+        const search = parsedQuery.success ? (parsedQuery.data.search || '') : ''
+        const hasSearch = Boolean(search)
+
         userModel.findOne({ email })
             .then(async (user) => {
                 if (!user) {
                     return res.status(404).json({ status: false, message: "User not found" })
                 }
 
+                const baseQuery = { userEmail: email }
+                let searchQuery = baseQuery
+
+                if (hasSearch) {
+                    // Prefer MongoDB text index search (inverted index) for fast lookup.
+                    let textMatches = []
+                    try {
+                        textMatches = await EventDPDraft.find({
+                            ...baseQuery,
+                            $text: { $search: search },
+                        }).select('_id')
+                    } catch (textSearchErr) {
+                        textMatches = []
+                    }
+
+                    if (textMatches.length > 0) {
+                        searchQuery = {
+                            ...baseQuery,
+                            _id: { $in: textMatches.map((item) => item._id) },
+                        }
+                    } else {
+                        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+                        searchQuery = {
+                            ...baseQuery,
+                            $or: [
+                                { title: { $regex: escaped, $options: 'i' } },
+                                { 'asset.originalFilename': { $regex: escaped, $options: 'i' } },
+                            ],
+                        }
+                    }
+                }
+
                 const [recentPublished, latestDrafts] = await Promise.all([
-                    EventDPDraft.find({ userEmail: email, status: 'published' })
+                    EventDPDraft.find({ ...searchQuery, status: 'published' })
                         .sort({ 'publish.publishedAt': -1, updatedAt: -1 })
                         .limit(6)
-                        .select('asset publish status createdAt updatedAt'),
-                    EventDPDraft.find({ userEmail: email })
+                        .select('title asset publish status createdAt updatedAt'),
+                    EventDPDraft.find(searchQuery)
                         .sort({ updatedAt: -1 })
                         .limit(20)
-                        .select('status publish history asset updatedAt createdAt'),
+                        .select('title status publish history asset updatedAt createdAt'),
                 ])
+
+                const totalEventsUsed = await EventDPDraft.countDocuments({ userEmail: email })
 
                 const recentEventDPs = recentPublished.map((item) => ({
                     id: String(item._id),
-                    name: item.asset?.originalFilename || `EventDP ${String(item._id).slice(-6)}`,
+                    name: item.title || item.asset?.originalFilename || `EventDP ${String(item._id).slice(-6)}`,
                     date: item.publish?.publishedAt || item.createdAt,
                     status: item.status,
                     image: item.asset?.secureUrl || '',
@@ -60,7 +105,7 @@ const getDashboard = (req, res) => {
                             action: entry.action,
                             at: entry.at,
                             status: draft.status,
-                            name: draft.asset?.originalFilename || `EventDP ${String(draft._id).slice(-6)}`,
+                            name: draft.title || draft.asset?.originalFilename || `EventDP ${String(draft._id).slice(-6)}`,
                             publicUrl: draft.publish?.publicUrl || '',
                         }))
                     })
@@ -73,6 +118,12 @@ const getDashboard = (req, res) => {
                     user,
                     recentEventDPs,
                     eventHistory,
+                    search,
+                    storage: {
+                        maxEvents: MAX_HOST_EVENTS,
+                        usedEvents: totalEventsUsed,
+                        remainingEvents: Math.max(0, MAX_HOST_EVENTS - totalEventsUsed),
+                    },
                 })
             })
             .catch((err) => {

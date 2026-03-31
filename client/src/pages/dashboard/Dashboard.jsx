@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { ToastContainer, toast, Bounce } from 'react-toastify'
 import { useNavigate } from 'react-router'
 import axios from 'axios'
@@ -8,29 +8,6 @@ import SidebarProfile from './components/navItems/SidebarProfile'
 import NavItemsGroup from './components/navItems/NavItemsGroup'
 import { primaryNavItems, secondaryNavItems } from './components/navItems/navItemsConfig'
 
-const statsCards = [
-  {
-    id: 'events',
-    title: 'Total Events',
-    value: '12',
-    helper: '+2 this month',
-    icon: 'mdi:calendar-check-outline',
-  },
-  {
-    id: 'downloads',
-    title: 'Total Downloads',
-    value: '4,892',
-    helper: '+12% vs last week',
-    icon: 'mdi:cloud-download-outline',
-  },
-  {
-    id: 'campaigns',
-    title: 'Active Campaigns',
-    value: '3',
-    helper: 'Currently running',
-    icon: 'mdi:bullhorn-outline',
-  },
-]
 
 const Dashboard = () => {
   const dashboardUrl = `${import.meta.env.VITE_BASE_URL}getDashboard`
@@ -39,7 +16,18 @@ const Dashboard = () => {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [recentEvents, setRecentEvents] = useState([])
   const [eventHistory, setEventHistory] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const hasWelcomedRef = useRef(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm.trim())
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -51,6 +39,7 @@ const Dashboard = () => {
     }
 
     axios.get(dashboardUrl, {
+      params: debouncedSearch ? { search: debouncedSearch } : {},
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -61,7 +50,10 @@ const Dashboard = () => {
           setRecentEvents(Array.isArray(result.data.recentEventDPs) ? result.data.recentEventDPs : [])
           setEventHistory(Array.isArray(result.data.eventHistory) ? result.data.eventHistory : [])
           setLoading(false)
-          notify(result.data.user?.username)
+          if (!hasWelcomedRef.current) {
+            notify(result.data.user?.username)
+            hasWelcomedRef.current = true
+          }
         } else if (result.status === 401 || result.status === 500 || result.status === 404) {
           setLoading(false)
           errorNotify(result.data.message)
@@ -74,7 +66,7 @@ const Dashboard = () => {
         setLoading(false)
         errorNotify(error?.response?.data?.message || 'Failed to fetch dashboard data')
       })
-  }, [navigate])
+  }, [navigate, debouncedSearch])
 
   const notify = (username) => {
     toast.success(`Welcome back, ${username || 'User'}!`, {
@@ -128,6 +120,12 @@ const Dashboard = () => {
 
     if (item?.id === 'dashboard') {
       navigate('/dashboard')
+      return
+    }
+
+    if (item?.id === 'settings') {
+      navigate('/settings')
+      return
     }
   }
 
@@ -143,6 +141,36 @@ const Dashboard = () => {
     return action || 'Updated'
   }
 
+  const getStatsCards = () => {
+    const publishedCount = recentEvents.length
+    const totalEvents = recentEvents.length + recentEvents.filter((e) => e.status === 'draft').length
+    const activeCount = recentEvents.filter((e) => e.status === 'published').length
+
+    return [
+      {
+        id: 'events',
+        title: 'Total Events',
+        value: totalEvents.toString(),
+        helper: `${publishedCount} published`,
+        icon: 'mdi:calendar-check-outline',
+      },
+      {
+        id: 'published',
+        title: 'Published Events',
+        value: publishedCount.toString(),
+        helper: `${activeCount} active`,
+        icon: 'mdi:cloud-download-outline',
+      },
+      {
+        id: 'member-since',
+        title: 'Member Since',
+        value: user.createdAt ? new Date(user.createdAt).getFullYear().toString() : 'N/A',
+        helper: user.plan ? `${user.plan} Plan` : 'Pro Plan',
+        icon: 'mdi:badge-outline',
+      },
+    ]
+  }
+
   if (loading) {
     return (
       <div className='min-h-screen w-full bg-pale-sage flex items-center justify-center px-4'>
@@ -156,11 +184,11 @@ const Dashboard = () => {
 
   return (
     <main className='min-h-screen bg-pale-sage text-dark-slate animate-fade-in'>
-      <div className='min-h-screen lg:grid lg:grid-cols-[260px_1fr]'>
-        <aside className='hidden lg:flex flex-col border-r border-forest-green/20 bg-dark-slate/95 text-white p-5 animate-slide-in-left'>
+      <div className='min-h-screen lg:grid lg:grid-cols-[260px_minmax(0,1fr)]'>
+        <aside className='hidden lg:flex lg:sticky lg:top-0 flex-col border-r border-forest-green/20 bg-dark-slate/95 text-white p-5 animate-slide-in-left h-screen overflow-hidden'>
           <SidebarBrand dark />
 
-          <div className='mt-8 flex-1 space-y-7 animate-fade-in-up' style={{ animationDelay: '120ms' }}>
+          <div className='mt-8 flex-1 space-y-7 animate-fade-in-up overflow-y-auto max-h-[calc(100vh-280px)]' style={{ animationDelay: '120ms' }}>
             <NavItemsGroup items={primaryNavItems} onItemClick={handleNavItemClick} variant='dark' />
           </div>
 
@@ -196,7 +224,7 @@ const Dashboard = () => {
           </div>
         </aside>
 
-        <section className='relative overflow-hidden animate-fade-in'>
+        <section className='relative min-w-0 overflow-hidden animate-fade-in'>
           <div className='absolute inset-0 pointer-events-none'>
             <div className='absolute -top-24 -left-8 h-56 w-56 rounded-full bg-forest-green/20 blur-3xl animate-float'></div>
             <div className='absolute top-10 right-6 h-56 w-56 rounded-full bg-dusty-green/20 blur-3xl animate-float-delayed'></div>
@@ -223,7 +251,9 @@ const Dashboard = () => {
                   <Icon icon='mdi:magnify' width='18' height='18' className='text-text-muted' />
                   <input
                     type='text'
-                    placeholder='Search events...'
+                    placeholder='Search by project title...'
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                     className='w-full bg-transparent text-sm placeholder:text-text-muted/80 outline-none'
                   />
                 </div>
@@ -243,7 +273,7 @@ const Dashboard = () => {
             </header>
 
             <div className='grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-7'>
-              {statsCards.map((card, index) => (
+              {getStatsCards().map((card, index) => (
                 <article
                   key={card.id}
                   className='rounded-2xl border border-forest-green/15 bg-white/80 backdrop-blur-sm p-5 shadow-lg shadow-forest-green/10 animate-fade-in-up hover:-translate-y-1 hover:shadow-xl hover:shadow-forest-green/15 transition-all duration-300'
