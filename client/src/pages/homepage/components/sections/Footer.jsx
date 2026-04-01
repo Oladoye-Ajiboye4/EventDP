@@ -16,10 +16,10 @@ const Footer = () => {
       { label: 'API Docs', href: '#api' },
     ],
     Company: [
-      { label: 'About', href: '/about' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Legal', href: '/legal' },
-      { label: 'Contact', href: '/contact' },
+      { label: 'About', href: '/' },
+      { label: 'Careers', href: '/signup' },
+      { label: 'Legal', href: '/signin' },
+      { label: 'Contact', href: '/learning-guide' },
     ],
   }
 
@@ -36,7 +36,7 @@ const Footer = () => {
               </div>
               <span className="font-bold text-xl tracking-tight">EventDP</span>
             </Link>
-            
+
             <p className="text-gray-400 max-w-xs mb-6">
               The easiest way to create branded event frames and turn your attendees into promoters.
             </p>
@@ -70,8 +70,8 @@ const Footer = () => {
               <ul className="space-y-2 text-sm text-gray-400">
                 {links.map((link, index) => (
                   <li key={index}>
-                    <a 
-                      href={link.href} 
+                    <a
+                      href={link.href}
                       className="hover:text-forest-green transition-colors"
                     >
                       {link.label}
@@ -87,10 +87,10 @@ const Footer = () => {
         <div className="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-500">
           <p>© 2024 EventDP Inc. All rights reserved.</p>
           <div className="flex gap-6">
-            <a href="/privacy" className="hover:text-gray-300 transition-colors">
+            <a href="/signin" className="hover:text-gray-300 transition-colors">
               Privacy Policy
             </a>
-            <a href="/terms" className="hover:text-gray-300 transition-colors">
+            <a href="/signup" className="hover:text-gray-300 transition-colors">
               Terms of Service
             </a>
           </div>

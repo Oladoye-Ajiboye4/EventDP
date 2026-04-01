@@ -13,21 +13,21 @@ const CTASection = () => {
         <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
           Ready to amplify your event's reach?
         </h2>
-        
+
         <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto">
           Join thousands of event organizers turning attendees into brand ambassadors today.
         </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Link 
-            to="/signup" 
+          <Link
+            to="/signup"
             className="bg-white text-forest-green px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-all shadow-xl transform hover:-translate-y-0.5"
           >
             Get Started Free
           </Link>
-          <Link 
-            to="/demo" 
+          <Link
+            to="/signin"
             className="bg-transparent border-2 border-white text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all"
           >
             Book a Demo

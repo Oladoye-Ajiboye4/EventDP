@@ -14,6 +14,7 @@ import CreateEventDP from "./pages/create_EventDP/CreateEventDP.jsx";
 import PublicEventDP from "./pages/publicEventDP/PublicEventDP.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import LearningGuide from "./pages/learningGuide/LearningGuide.jsx";
+import NotFound from "./pages/notFound/NotFound.jsx";
 
 
 const router = createBrowserRouter([
@@ -60,6 +61,10 @@ const router = createBrowserRouter([
   {
     path: "/eventdp/:slug",
     element: <PublicEventDP />,
+  },
+  {
+    path: "*",
+    element: <NotFound />,
   },
 ]);
 

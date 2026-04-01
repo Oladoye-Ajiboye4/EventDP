@@ -36,7 +36,7 @@ const Navbar = () => {
 
           {/* CTA - Desktop */}
           <div className="hidden md:flex items-center space-x-4">
-            <Link to="/login" className="text-dark-slate dark:text-white font-medium hover:text-forest-green transition-colors">
+            <Link to="/signin" className="text-dark-slate dark:text-white font-medium hover:text-forest-green transition-colors">
               Log In
             </Link>
             <Link to="/signup" className="bg-forest-green hover:bg-[#48614F] text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg shadow-forest-green/20 hover:shadow-forest-green/40">
@@ -46,7 +46,7 @@ const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
-            <button 
+            <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="text-dark-slate dark:text-white hover:text-forest-green focus:outline-none"
               aria-label="Toggle menu"
@@ -74,7 +74,7 @@ const Navbar = () => {
               Blog
             </a>
             <div className="pt-2 space-y-2">
-              <Link to="/login" className="block px-4 py-2 text-dark-slate hover:text-forest-green rounded-lg transition-colors">
+              <Link to="/signin" className="block px-4 py-2 text-dark-slate hover:text-forest-green rounded-lg transition-colors">
                 Log In
               </Link>
               <Link to="/signup" className="block px-4 py-2 bg-forest-green text-white rounded-lg font-medium hover:bg-[#48614F] transition-all text-center">

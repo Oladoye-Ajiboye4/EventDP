@@ -67,7 +67,7 @@ const getClientBaseUrl = (req) => {
         ? `${req.protocol}://${req.get('host')}`
         : 'http://localhost:5173'
 
-    return (process.env.PUBLIC_WEB_BASE_URL || process.env.CLIENT_BASE_URL || origin || fallbackClientUrl).replace(/\/$/, '')
+   return (process.env.PUBLIC_WEB_BASE_URL || process.env.CLIENT_BASE_URL || process.env.APP_URL || origin || fallbackClientUrl).replace(/\/$/, '')
 }
 
 app.get('/eventdp/:projectSlug/:accessKey', (req, res) => {
