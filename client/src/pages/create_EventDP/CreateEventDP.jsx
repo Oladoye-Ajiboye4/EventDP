@@ -73,7 +73,6 @@ const CreateEventDP = () => {
     const [lastSavedTime, setLastSavedTime] = useState(null)
     const isEditorLocked = publishState === 'published' || publishState === 'publishing'
     const requestedDraftId = searchParams.get('draft') || searchParams.get('draftId') || ''
-    const showMobileToolSwitch = Boolean(uploadedImage) && allowGuestText && !mobileSidebarOpen && !mobileSettingsOpen
 
     const normalizeTitle = useCallback((value) => value.trim().replace(/\s+/g, ' '), [])
 
@@ -155,6 +154,8 @@ const CreateEventDP = () => {
         draftSnapshot,
         hydrateDraft,
     } = useCreateEventDPState()
+
+    const showMobileToolSwitch = Boolean(uploadedImage) && allowGuestText && !mobileSidebarOpen && !mobileSettingsOpen
 
     useEffect(() => {
         latestDraftMetaRef.current = draftMeta
