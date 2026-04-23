@@ -10,16 +10,16 @@ const SocialProofSection = () => {
   ]
 
   return (
-    <section className="py-10 border-y border-forest-green/10 bg-white/50 dark:bg-white/5">
+    <section className="py-8 sm:py-10 border-y border-forest-green/10 bg-white/50 dark:bg-white/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <p className="text-center text-sm font-semibold text-text-muted uppercase tracking-wider mb-6">
+        <p data-animate className="text-center text-[11px] sm:text-sm font-semibold text-text-muted uppercase tracking-[0.16em] mb-5 sm:mb-6">
           Powering events for innovative teams
         </p>
-        
-        <div className="flex flex-wrap justify-center gap-8 md:gap-16 opacity-60 hover:opacity-100 transition-opacity duration-500 grayscale hover:grayscale-0">
+
+        <div data-animate className="flex flex-wrap justify-center gap-x-5 gap-y-4 sm:gap-x-8 md:gap-x-16 opacity-70 hover:opacity-100 transition-opacity duration-500 grayscale hover:grayscale-0">
           {companies.map((company, index) => (
-            <div key={index} className="flex items-center gap-2 font-bold text-xl text-dark-slate dark:text-white">
-              <span className="text-2xl">{company.icon}</span> 
+            <div data-gsap-hover key={index} className="flex items-center gap-2 font-bold text-base sm:text-lg md:text-xl text-dark-slate dark:text-white">
+              <span className="text-xl sm:text-2xl">{company.icon}</span>
               {company.name}
             </div>
           ))}

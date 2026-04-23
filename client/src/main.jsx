@@ -15,11 +15,16 @@ import PublicEventDP from "./pages/publicEventDP/PublicEventDP.jsx";
 import Settings from "./pages/settings/Settings.jsx";
 import LearningGuide from "./pages/learningGuide/LearningGuide.jsx";
 import NotFound from "./pages/notFound/NotFound.jsx";
+import TrailerPage from './pages/homepage_intro/TrailerPage.jsx';
 
 
 const router = createBrowserRouter([
   {
     path: "/",
+    element: <TrailerPage />,
+  },
+  {
+    path: "/homepage",
     element: <Homepage />,
   },
   {

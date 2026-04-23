@@ -1,14 +1,14 @@
 import React from 'react'
 
 const FeatureCard = ({ icon, title, description }) => (
-  <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-forest-green/5 hover:border-forest-green/20 hover:shadow-md transition-all group">
-    <div className="w-14 h-14 bg-forest-green/10 rounded-xl flex items-center justify-center text-forest-green mb-6 group-hover:scale-110 transition-transform duration-300">
+  <div data-animate data-gsap-hover data-gsap-tilt className="bg-white dark:bg-gray-800 p-5 sm:p-6 lg:p-8 rounded-2xl shadow-sm border border-forest-green/5 hover:border-forest-green/20 hover:shadow-md transition-all group will-change-transform">
+    <div className="w-12 h-12 sm:w-14 sm:h-14 bg-forest-green/10 rounded-xl flex items-center justify-center text-forest-green mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300">
       {icon}
     </div>
-    <h3 className="text-xl font-bold text-dark-slate dark:text-white mb-3">
+    <h3 className="text-lg sm:text-xl font-bold text-dark-slate dark:text-white mb-2 sm:mb-3">
       {title}
     </h3>
-    <p className="text-text-muted dark:text-gray-400 leading-relaxed">
+    <p className="text-sm sm:text-base text-text-muted dark:text-gray-400 leading-relaxed">
       {description}
     </p>
   </div>
@@ -46,20 +46,20 @@ const FeaturesGridSection = () => {
   ]
 
   return (
-    <section className="py-24 relative" id="features">
+    <section className="py-16 sm:py-20 lg:py-24 relative" id="features">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-dark-slate dark:text-white mb-4">
+        <div data-animate className="text-center max-w-3xl mx-auto mb-10 sm:mb-14 lg:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-dark-slate dark:text-white mb-3 sm:mb-4">
             Everything you need to go viral
           </h2>
-          <p className="text-lg text-text-muted dark:text-gray-400">
+          <p className="text-base sm:text-lg text-text-muted dark:text-gray-400">
             Design, distribute, and track your event frames all in one dashboard.
           </p>
         </div>
 
         {/* Features Grid */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
           {features.map((feature, index) => (
             <FeatureCard key={index} {...feature} />
           ))}
