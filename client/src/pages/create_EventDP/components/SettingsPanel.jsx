@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
 
 const TEXT_ALIGN_OPTIONS = [
@@ -13,6 +13,25 @@ const TEXT_TRANSFORM_OPTIONS = [
     { value: 'lowercase', label: 'lowercase' },
     { value: 'capitalize', label: 'Capitalize' },
 ]
+
+const formatNumeric = (value, precision = 2) => {
+    const parsed = Number.parseFloat(value)
+    if (!Number.isFinite(parsed)) {
+        return '0'
+    }
+
+    return parsed.toFixed(precision).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1')
+}
+
+const getLengthCss = (value, unit, fallback = '0px') => {
+    const parsed = Number.parseFloat(value)
+    if (!Number.isFinite(parsed)) {
+        return fallback
+    }
+
+    const safeUnit = unit === 'pt' ? 'pt' : 'px'
+    return `${parsed}${safeUnit}`
+}
 
 const SettingsPanel = ({
     // zone shape
@@ -53,6 +72,18 @@ const SettingsPanel = ({
         ? fontWeightOptions
         : [{ value: guestTextStyle.fontWeight || 700, label: String(guestTextStyle.fontWeight || 700) }]
     const [fontQuery, setFontQuery] = useState('')
+    const [fontDropdownOpen, setFontDropdownOpen] = useState(false)
+    const fontDropdownRef = useRef(null)
+    const fontSizeUnit = guestTextStyle.fontSizeUnit || 'px'
+    const letterSpacingUnit = guestTextStyle.letterSpacingUnit || 'px'
+    const lineHeightUnit = guestTextStyle.lineHeightUnit || 'unitless'
+    const lastValidFontSizeRef = useRef(String(guestTextStyle.fontSize ?? '0'))
+    const lastValidLetterSpacingRef = useRef(String(guestTextStyle.letterSpacing ?? '0'))
+    const lastValidLineHeightRef = useRef(String(guestTextStyle.lineHeight ?? (lineHeightUnit === 'unitless' ? '1.25' : '24')))
+
+    const [fontSizeError, setFontSizeError] = useState('')
+    const [letterSpacingError, setLetterSpacingError] = useState('')
+    const [lineHeightError, setLineHeightError] = useState('')
 
     // Filter fonts by query (case-insensitive)
     const filteredFontOptions = useMemo(() => {
@@ -60,6 +91,126 @@ const SettingsPanel = ({
         const q = fontQuery.trim().toLowerCase()
         return safeFontOptions.filter((f) => String(f || '').toLowerCase().includes(q))
     }, [safeFontOptions, fontQuery])
+
+    useEffect(() => {
+        if (!fontDropdownOpen) {
+            return
+        }
+
+        const handleDocumentClick = (event) => {
+            if (!fontDropdownRef.current?.contains(event.target)) {
+                setFontDropdownOpen(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleDocumentClick)
+        return () => document.removeEventListener('mousedown', handleDocumentClick)
+    }, [fontDropdownOpen])
+
+    useEffect(() => {
+        // keep last-valid refs in sync when guestTextStyle updates externally
+        lastValidFontSizeRef.current = String(guestTextStyle.fontSize ?? lastValidFontSizeRef.current)
+        lastValidLetterSpacingRef.current = String(guestTextStyle.letterSpacing ?? lastValidLetterSpacingRef.current)
+        lastValidLineHeightRef.current = String(guestTextStyle.lineHeight ?? lastValidLineHeightRef.current)
+    }, [guestTextStyle.fontSize, guestTextStyle.letterSpacing, guestTextStyle.lineHeight])
+
+    const selectIfZero = (e) => {
+        try { e.target.select() } catch (err) { /* ignore */ }
+    }
+
+    const handleFontSizeFocus = (e) => {
+        const cur = String(guestTextStyle.fontSize ?? '')
+        if (cur === '' || cur === '0') {
+            onGuestTextStyleChange({ fontSize: '0' })
+            requestAnimationFrame(() => selectIfZero(e))
+        }
+    }
+
+    const handleFontSizeBlur = (e) => {
+        const v = String(e.target.value || '')
+        if (v === '') {
+            onGuestTextStyleChange({ fontSize: '0' })
+            lastValidFontSizeRef.current = '0'
+            setFontSizeError('')
+            return
+        }
+        const parsed = Number.parseFloat(v)
+        if (!Number.isFinite(parsed)) {
+            setFontSizeError('Enter a valid number')
+            onGuestTextStyleChange({ fontSize: lastValidFontSizeRef.current })
+            return
+        }
+        const min = 0
+        const max = fontSizeUnit === 'pt' ? 180 : 240
+        const clamped = Math.min(Math.max(parsed, min), max)
+        const out = String(clamped)
+        onGuestTextStyleChange({ fontSize: out })
+        lastValidFontSizeRef.current = out
+        setFontSizeError('')
+    }
+
+    const handleLetterSpacingFocus = (e) => {
+        const cur = String(guestTextStyle.letterSpacing ?? '')
+        if (cur === '' || cur === '0') {
+            onGuestTextStyleChange({ letterSpacing: '0' })
+            requestAnimationFrame(() => selectIfZero(e))
+        }
+    }
+
+    const handleLetterSpacingBlur = (e) => {
+        const v = String(e.target.value || '')
+        if (v === '') {
+            onGuestTextStyleChange({ letterSpacing: '0' })
+            lastValidLetterSpacingRef.current = '0'
+            setLetterSpacingError('')
+            return
+        }
+        const parsed = Number.parseFloat(v)
+        if (!Number.isFinite(parsed)) {
+            setLetterSpacingError('Enter a valid number')
+            onGuestTextStyleChange({ letterSpacing: lastValidLetterSpacingRef.current })
+            return
+        }
+        const min = -4
+        const max = 24
+        const clamped = Math.min(Math.max(parsed, min), max)
+        const out = String(clamped)
+        onGuestTextStyleChange({ letterSpacing: out })
+        lastValidLetterSpacingRef.current = out
+        setLetterSpacingError('')
+    }
+
+    const handleLineHeightFocus = (e) => {
+        const cur = String(guestTextStyle.lineHeight ?? '')
+        if (cur === '' || cur === '0') {
+            onGuestTextStyleChange({ lineHeight: lineHeightUnit === 'unitless' ? '1' : '24' })
+            requestAnimationFrame(() => selectIfZero(e))
+        }
+    }
+
+    const handleLineHeightBlur = (e) => {
+        const v = String(e.target.value || '')
+        if (v === '') {
+            const fallback = lineHeightUnit === 'unitless' ? '1.25' : '24'
+            onGuestTextStyleChange({ lineHeight: fallback })
+            lastValidLineHeightRef.current = fallback
+            setLineHeightError('')
+            return
+        }
+        const parsed = Number.parseFloat(v)
+        if (!Number.isFinite(parsed)) {
+            setLineHeightError('Enter a valid number')
+            onGuestTextStyleChange({ lineHeight: lastValidLineHeightRef.current })
+            return
+        }
+        const min = lineHeightUnit === 'unitless' ? 0.6 : (lineHeightUnit === 'pt' ? 6 : 8)
+        const max = lineHeightUnit === 'unitless' ? 4 : (lineHeightUnit === 'pt' ? 220 : 300)
+        const clamped = Math.min(Math.max(parsed, min), max)
+        const out = String(clamped)
+        onGuestTextStyleChange({ lineHeight: out })
+        lastValidLineHeightRef.current = out
+        setLineHeightError('')
+    }
 
     return (
         <aside className={`${className || 'w-80 bg-white border-l border-dusty-green/25 flex-col overflow-y-auto hidden xl:flex animate-slide-in-right'} ${disabled ? 'opacity-70' : ''}`}>
@@ -272,10 +423,12 @@ const SettingsPanel = ({
                                         fontStyle: guestTextStyle.fontStyle,
                                         textDecoration: guestTextStyle.textDecoration,
                                         textTransform: guestTextStyle.textTransform,
-                                        fontSize: `${Math.max(12, Math.min(Number(guestTextStyle.fontSize) || 12, 26))}px`,
+                                        fontSize: getLengthCss(guestTextStyle.fontSize, fontSizeUnit, '16px'),
                                         color: guestTextStyle.color,
-                                        letterSpacing: `${guestTextStyle.letterSpacing}px`,
-                                        lineHeight: guestTextStyle.lineHeight,
+                                        letterSpacing: getLengthCss(guestTextStyle.letterSpacing, letterSpacingUnit, '0px'),
+                                        lineHeight: lineHeightUnit === 'unitless'
+                                            ? Number.parseFloat(guestTextStyle.lineHeight) || 1.25
+                                            : getLengthCss(guestTextStyle.lineHeight, lineHeightUnit, '1.25'),
                                         textAlign: guestTextStyle.textAlign,
                                     }}
                                     rows={3}
@@ -286,27 +439,57 @@ const SettingsPanel = ({
                             <div className='grid grid-cols-2 gap-2'>
                                 <label className='space-y-1'>
                                     <span className='text-[10px] font-semibold text-dark-slate/65 uppercase'>Font</span>
-                                    <div className='relative'>
-                                        <input
-                                            type='search'
-                                            value={fontQuery}
-                                            onChange={(e) => setFontQuery(e.target.value)}
-                                            placeholder='Search fonts…'
-                                            className='w-full h-9 rounded-lg border border-dusty-green/35 bg-white px-3 text-xs text-dark-slate outline-none focus:border-forest-green'
-                                        />
-                                        <select
-                                            value={guestTextStyle.fontFamily}
-                                            onChange={(event) => onGuestTextStyleChange({ fontFamily: event.target.value })}
-                                            className='w-full h-9 rounded-lg border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green mt-2'
+                                    <div className='relative' ref={fontDropdownRef}>
+                                        <button
+                                            type='button'
+                                            onClick={() => {
+                                                setFontDropdownOpen((prev) => !prev)
+                                                setFontQuery('')
+                                            }}
+                                            className='w-full h-9 rounded-lg border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green flex items-center justify-between gap-2'
                                         >
-                                            {filteredFontOptions.length > 0 ? (
-                                                filteredFontOptions.map((font) => (
-                                                    <option key={font} value={font}>{font}</option>
-                                                ))
-                                            ) : (
-                                                <option value={guestTextStyle.fontFamily || ''} disabled>No fonts found</option>
-                                            )}
-                                        </select>
+                                            <span className='truncate'>{guestTextStyle.fontFamily || 'Select font'}</span>
+                                            <Icon icon={fontDropdownOpen ? 'mdi:chevron-up' : 'mdi:chevron-down'} width='16' height='16' />
+                                        </button>
+
+                                        {fontDropdownOpen && (
+                                            <div className='absolute left-0 right-0 mt-1 rounded-lg border border-dusty-green/35 bg-white shadow-lg z-20 overflow-hidden'>
+                                                <div className='p-2 border-b border-dusty-green/20'>
+                                                    <input
+                                                        type='search'
+                                                        value={fontQuery}
+                                                        onChange={(event) => setFontQuery(event.target.value)}
+                                                        placeholder='Search fonts...'
+                                                        className='w-full h-8 rounded-md border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green'
+                                                    />
+                                                </div>
+
+                                                <div className='max-h-44 overflow-y-auto p-1'>
+                                                    {filteredFontOptions.length > 0 ? (
+                                                        filteredFontOptions.map((font) => {
+                                                            const isSelected = guestTextStyle.fontFamily === font
+                                                            return (
+                                                                <button
+                                                                    key={font}
+                                                                    type='button'
+                                                                    onClick={() => {
+                                                                        onGuestTextStyleChange({ fontFamily: font })
+                                                                        setFontDropdownOpen(false)
+                                                                    }}
+                                                                    className={`w-full h-8 rounded-md px-2 text-left text-xs ${isSelected
+                                                                        ? 'bg-forest-green/12 text-forest-green font-semibold'
+                                                                        : 'text-dark-slate hover:bg-pale-sage'}`}
+                                                                >
+                                                                    {font}
+                                                                </button>
+                                                            )
+                                                        })
+                                                    ) : (
+                                                        <p className='px-2 py-2 text-[11px] text-dark-slate/55'>No fonts found</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     {fontCatalogError ? (
                                         <p className='text-[10px] text-red-600'>{fontCatalogError}</p>
@@ -326,21 +509,41 @@ const SettingsPanel = ({
                                 </label>
                             </div>
 
-                            <div className='grid grid-cols-2 gap-3'>
+                            <div className='space-y-3'>
                                 <div className='space-y-1'>
                                     <div className='flex items-center justify-between'>
                                         <span className='text-[10px] font-semibold text-dark-slate/65 uppercase'>Size</span>
-                                        <span className='text-[10px] font-bold text-dark-slate'>{guestTextStyle.fontSize}px</span>
+                                        <span className='text-[10px] font-bold text-dark-slate'>{formatNumeric(guestTextStyle.fontSize)} {fontSizeUnit}</span>
                                     </div>
-                                    <input
-                                        type='range'
-                                        min='12'
-                                        max='220'
-                                        value={guestTextStyle.fontSize}
-                                        onChange={(event) => onGuestTextStyleChange({ fontSize: Number(event.target.value) })}
-                                        className='w-full accent-forest-green h-1.5'
-                                    />
+                                    <div className='grid grid-cols-[1fr_auto] gap-2'>
+                                        <input
+                                            type='text'
+                                            inputMode='decimal'
+                                            pattern='^-?\\d*(\\.\\d*)?$'
+                                            placeholder='0'
+                                            value={guestTextStyle.fontSize}
+                                            onFocus={handleFontSizeFocus}
+                                            onBlur={handleFontSizeBlur}
+                                            onChange={(event) => {
+                                                const v = event.target.value
+                                                if (v === '' || /^-?\d*(\.\d*)?$/.test(v)) {
+                                                    onGuestTextStyleChange({ fontSize: v })
+                                                }
+                                            }}
+                                            className={`h-9 rounded-lg border px-2 text-xs text-dark-slate outline-none focus:border-forest-green ${fontSizeError ? 'border-red-500' : 'border-dusty-green/35 bg-white'}`}
+                                        />
+                                        <select
+                                            value={fontSizeUnit}
+                                            onChange={(event) => onGuestTextStyleChange({ fontSizeUnit: event.target.value })}
+                                            className='h-9 rounded-lg border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green'
+                                        >
+                                            <option value='px'>px</option>
+                                            <option value='pt'>pt</option>
+                                        </select>
+                                    </div>
+                                    {fontSizeError ? <p className='text-xs text-red-500 mt-1'>{fontSizeError}</p> : null}
                                 </div>
+
                                 <div className='space-y-1'>
                                     <span className='text-[10px] font-semibold text-dark-slate/65 uppercase'>Color</span>
                                     <label className='h-9 rounded-lg border border-dusty-green/35 bg-white px-2 flex items-center gap-2'>
@@ -358,33 +561,72 @@ const SettingsPanel = ({
                             <div className='space-y-2'>
                                 <div className='flex items-center justify-between'>
                                     <span className='text-[10px] font-semibold text-dark-slate/65 uppercase'>Letter Spacing</span>
-                                    <span className='text-[10px] font-bold text-dark-slate'>{guestTextStyle.letterSpacing}px</span>
+                                    <span className='text-[10px] font-bold text-dark-slate'>{formatNumeric(guestTextStyle.letterSpacing)} {letterSpacingUnit}</span>
                                 </div>
-                                <input
-                                    type='range'
-                                    min='-1'
-                                    max='12'
-                                    step='0.5'
-                                    value={guestTextStyle.letterSpacing}
-                                    onChange={(event) => onGuestTextStyleChange({ letterSpacing: Number(event.target.value) })}
-                                    className='w-full accent-forest-green h-1.5'
-                                />
+                                <div className='grid grid-cols-[1fr_auto] gap-2'>
+                                    <input
+                                        type='text'
+                                        inputMode='decimal'
+                                        pattern='^-?\\d*(\\.\\d*)?$'
+                                        placeholder='0'
+                                        value={guestTextStyle.letterSpacing}
+                                        onFocus={handleLetterSpacingFocus}
+                                        onBlur={handleLetterSpacingBlur}
+                                        onChange={(event) => {
+                                            const v = event.target.value
+                                            if (v === '' || /^-?\d*(\.\d*)?$/.test(v)) {
+                                                onGuestTextStyleChange({ letterSpacing: v })
+                                            }
+                                        }}
+                                        className={`h-9 rounded-lg border px-2 text-xs text-dark-slate outline-none focus:border-forest-green ${letterSpacingError ? 'border-red-500' : 'border-dusty-green/35 bg-white'}`}
+                                    />
+                                    <select
+                                        value={letterSpacingUnit}
+                                        onChange={(event) => onGuestTextStyleChange({ letterSpacingUnit: event.target.value })}
+                                        className='h-9 rounded-lg border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green'
+                                    >
+                                        <option value='px'>px</option>
+                                        <option value='pt'>pt</option>
+                                    </select>
+                                </div>
+                                {letterSpacingError ? <p className='text-xs text-red-500 mt-1'>{letterSpacingError}</p> : null}
                             </div>
 
                             <div className='space-y-2'>
                                 <div className='flex items-center justify-between'>
                                     <span className='text-[10px] font-semibold text-dark-slate/65 uppercase'>Line Height</span>
-                                    <span className='text-[10px] font-bold text-dark-slate'>{guestTextStyle.lineHeight.toFixed(2)}</span>
+                                    <span className='text-[10px] font-bold text-dark-slate'>
+                                        {formatNumeric(guestTextStyle.lineHeight)} {lineHeightUnit === 'unitless' ? '' : lineHeightUnit}
+                                    </span>
                                 </div>
-                                <input
-                                    type='range'
-                                    min='0.9'
-                                    max='2'
-                                    step='0.05'
-                                    value={guestTextStyle.lineHeight}
-                                    onChange={(event) => onGuestTextStyleChange({ lineHeight: Number(event.target.value) })}
-                                    className='w-full accent-forest-green h-1.5'
-                                />
+                                <div className='grid grid-cols-[1fr_auto] gap-2'>
+                                    <input
+                                        type='text'
+                                        inputMode='decimal'
+                                        pattern='^-?\\d*(\\.\\d*)?$'
+                                        placeholder={lineHeightUnit === 'unitless' ? '1.25' : '24'}
+                                        value={guestTextStyle.lineHeight}
+                                        onFocus={handleLineHeightFocus}
+                                        onBlur={handleLineHeightBlur}
+                                        onChange={(event) => {
+                                            const v = event.target.value
+                                            if (v === '' || /^-?\d*(\.\d*)?$/.test(v)) {
+                                                onGuestTextStyleChange({ lineHeight: v })
+                                            }
+                                        }}
+                                        className={`h-9 rounded-lg border px-2 text-xs text-dark-slate outline-none focus:border-forest-green ${lineHeightError ? 'border-red-500' : 'border-dusty-green/35 bg-white'}`}
+                                    />
+                                    <select
+                                        value={lineHeightUnit}
+                                        onChange={(event) => onGuestTextStyleChange({ lineHeightUnit: event.target.value })}
+                                        className='h-9 rounded-lg border border-dusty-green/35 bg-white px-2 text-xs text-dark-slate outline-none focus:border-forest-green'
+                                    >
+                                        <option value='unitless'>unitless</option>
+                                        <option value='px'>px</option>
+                                        <option value='pt'>pt</option>
+                                    </select>
+                                </div>
+                                {lineHeightError ? <p className='text-xs text-red-500 mt-1'>{lineHeightError}</p> : null}
                             </div>
 
                             <div className='space-y-2'>

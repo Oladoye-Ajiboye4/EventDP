@@ -29,15 +29,20 @@ export const ensureGoogleFontLoaded = ({ family, weights }) => {
     const familyParam = safeFamily.replace(/\s+/g, '+')
     const weightsParam = normalizedWeights.join(';')
     const linkId = `${FONT_LINK_PREFIX}${sanitizeIdPart(safeFamily)}`
+    const href = `https://fonts.googleapis.com/css2?family=${familyParam}:wght@${weightsParam}&display=swap`
 
-    if (document.getElementById(linkId)) {
+    const existingLink = document.getElementById(linkId)
+    if (existingLink) {
+        if (existingLink.getAttribute('href') !== href) {
+            existingLink.setAttribute('href', href)
+        }
         return
     }
 
     const link = document.createElement('link')
     link.id = linkId
     link.rel = 'stylesheet'
-    link.href = `https://fonts.googleapis.com/css2?family=${familyParam}:wght@${weightsParam}&display=swap`
+    link.href = href
     document.head.appendChild(link)
 }
 

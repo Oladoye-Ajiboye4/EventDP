@@ -333,15 +333,38 @@ const PublicEventDP = () => {
     }, [eventDP, guestDraftStorageKey, guestPhotoSrc, guestTextByZone, guestViewMode])
 
     useEffect(() => {
-        const textStyle = eventDP?.editor?.guestTextStyle
-        const family = String(textStyle?.fontFamily || '').trim()
-        if (!family) {
+        const editor = eventDP?.editor
+        const styleCandidates = [editor?.guestTextStyle]
+
+        if (Array.isArray(editor?.textZones)) {
+            editor.textZones.forEach((zone) => {
+                if (zone?.style) {
+                    styleCandidates.push(zone.style)
+                }
+            })
+        }
+
+        const familyWeights = styleCandidates.reduce((acc, style) => {
+            const family = String(style?.fontFamily || '').trim()
+            if (!family) {
+                return acc
+            }
+
+            const weight = Number(style?.fontWeight) || 700
+            acc[family] = Array.from(new Set([...(acc[family] || []), weight]))
+            return acc
+        }, {})
+
+        const entries = Object.entries(familyWeights)
+        if (entries.length === 0) {
             return
         }
 
-        ensureGoogleFontLoaded({
-            family,
-            weights: [Number(textStyle?.fontWeight) || 700],
+        entries.forEach(([family, weights]) => {
+            ensureGoogleFontLoaded({
+                family,
+                weights,
+            })
         })
     }, [eventDP])
 

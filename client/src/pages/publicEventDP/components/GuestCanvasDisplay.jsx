@@ -3,6 +3,31 @@ import { Icon } from '@iconify/react'
 import { fitCanvasToViewport } from '../../create_EventDP/logic/canvasMath'
 import { resolveZoneActual, actualToGuestDisplay } from '../../create_EventDP/logic/zoneCoordinates'
 
+const lengthToPx = (value, unit = 'px') => {
+    const parsed = Number.parseFloat(value)
+    if (!Number.isFinite(parsed)) {
+        return 0
+    }
+
+    return unit === 'pt' ? parsed * (96 / 72) : parsed
+}
+
+const resolveLineHeightCss = (style, scale = 1) => {
+    const unit = style?.lineHeightUnit || 'unitless'
+    const value = Number.parseFloat(style?.lineHeight)
+
+    if (!Number.isFinite(value)) {
+        return 1.25
+    }
+
+    if (unit === 'unitless') {
+        return value
+    }
+
+    const pxValue = lengthToPx(value, unit)
+    return `${Math.max(1, pxValue * scale)}px`
+}
+
 const ZoneDisplayOverlay = ({
     rect,
     kind,
@@ -46,6 +71,8 @@ const ZoneDisplayOverlay = ({
     }
 
     const isTinyZone = rect.width < 120 || rect.height < 100
+    const baseFontSizePx = lengthToPx(textStyle?.fontSize || 16, textStyle?.fontSizeUnit || 'px')
+    const baseLetterSpacingPx = lengthToPx(textStyle?.letterSpacing || 0, textStyle?.letterSpacingUnit || 'px')
 
     return (
         <div
@@ -86,9 +113,9 @@ const ZoneDisplayOverlay = ({
                             fontStyle: textStyle?.fontStyle || 'normal',
                             textDecoration: textStyle?.textDecoration || 'none',
                             textTransform: textStyle?.textTransform || 'none',
-                            fontSize: `${Math.max(11, Math.min((textStyle?.fontSize || 16) * 0.5, rect.height * 0.3))}px`,
-                            lineHeight: textStyle?.lineHeight || 1.4,
-                            letterSpacing: `${Math.max(-1, Math.min(textStyle?.letterSpacing || 0, 3))}px`,
+                            fontSize: `${Math.max(11, Math.min(baseFontSizePx * 0.5, rect.height * 0.3))}px`,
+                            lineHeight: resolveLineHeightCss(textStyle, 0.5),
+                            letterSpacing: `${Math.max(-2, Math.min(baseLetterSpacingPx * 0.5, 6))}px`,
                             textAlign: textStyle?.textAlign || 'center',
                             textShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
                         }}
@@ -259,6 +286,11 @@ const GuestCanvasDisplay = ({
                                 return null
                             }
 
+                            const zoneStyle = textZones?.[idx]?.style || guestTextStyle || {}
+                            const fontSizePx = lengthToPx(zoneStyle?.fontSize || 26, zoneStyle?.fontSizeUnit || 'px')
+                            const letterSpacingPx = lengthToPx(zoneStyle?.letterSpacing || 0, zoneStyle?.letterSpacingUnit || 'px')
+                            const canvasScale = canvasSize.width / imageDimensions.width
+
                             return (
                                 <div
                                     key={`submitted-text-${idx}`}
@@ -274,20 +306,20 @@ const GuestCanvasDisplay = ({
                                     <div
                                         className='w-full h-full wrap-break-word'
                                         style={{
-                                            color: guestTextStyle?.color || '#FFFFFF',
-                                            fontFamily: guestTextStyle?.fontFamily || 'Poppins',
-                                            fontWeight: guestTextStyle?.fontWeight || 700,
-                                            fontStyle: guestTextStyle?.fontStyle || 'normal',
-                                            textDecoration: guestTextStyle?.textDecoration || 'none',
-                                            textTransform: guestTextStyle?.textTransform || 'none',
-                                            fontSize: `${Math.max(10, Math.min((guestTextStyle?.fontSize || 26) * (canvasSize.width / imageDimensions.width), displayCoords.height * 0.45))}px`,
-                                            lineHeight: guestTextStyle?.lineHeight || 1.2,
-                                            letterSpacing: `${Math.max(-1, Math.min((guestTextStyle?.letterSpacing || 0) * (canvasSize.width / imageDimensions.width), 5))}px`,
-                                            textAlign: guestTextStyle?.textAlign || 'center',
+                                            color: zoneStyle?.color || '#FFFFFF',
+                                            fontFamily: zoneStyle?.fontFamily || 'Poppins',
+                                            fontWeight: zoneStyle?.fontWeight || 700,
+                                            fontStyle: zoneStyle?.fontStyle || 'normal',
+                                            textDecoration: zoneStyle?.textDecoration || 'none',
+                                            textTransform: zoneStyle?.textTransform || 'none',
+                                            fontSize: `${Math.max(10, Math.min(fontSizePx * canvasScale, displayCoords.height * 0.45))}px`,
+                                            lineHeight: resolveLineHeightCss(zoneStyle, canvasScale),
+                                            letterSpacing: `${Math.max(-2, Math.min(letterSpacingPx * canvasScale, 8))}px`,
+                                            textAlign: zoneStyle?.textAlign || 'center',
                                             textShadow: '0 2px 10px rgba(0,0,0,0.35)',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: guestTextStyle?.textAlign === 'left' ? 'flex-start' : (guestTextStyle?.textAlign === 'right' ? 'flex-end' : 'center'),
+                                            justifyContent: zoneStyle?.textAlign === 'left' ? 'flex-start' : (zoneStyle?.textAlign === 'right' ? 'flex-end' : 'center'),
                                             whiteSpace: 'pre-wrap',
                                         }}
                                     >
@@ -322,7 +354,7 @@ const GuestCanvasDisplay = ({
                                     index={idx}
                                     isSelected={selectedZoneIndex === `text-${idx}`}
                                     isHovered={hoveredZone === `text-${idx}`}
-                                    textStyle={guestTextStyle}
+                                    textStyle={textZones?.[idx]?.style || guestTextStyle}
                                     onClick={() => onTextZoneClick?.(idx)}
                                     onMouseEnter={() => onZoneHover?.(`text-${idx}`)}
                                     onMouseLeave={() => onZoneHover?.(null)}

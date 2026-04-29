@@ -23,9 +23,12 @@ const DEFAULT_GUEST_TEXT_STYLE = {
     text: 'Add your custom message',
     fontFamily: 'Poppins',
     fontSize: 30,
+    fontSizeUnit: 'px',
     color: '#FFFFFF',
     letterSpacing: 0,
+    letterSpacingUnit: 'px',
     lineHeight: 1.25,
+    lineHeightUnit: 'unitless',
     fontWeight: 700,
     fontStyle: 'normal',
     textDecoration: 'none',
@@ -55,11 +58,52 @@ const DEFAULT_EDITOR_STATE = {
 const normalizeTextStyle = (style) => {
     const next = { ...style }
     next.text = String(next.text || '').slice(0, 90)
-    next.fontSize = clamp(Number(next.fontSize) || DEFAULT_GUEST_TEXT_STYLE.fontSize, 12, 220)
-    next.letterSpacing = clamp(Number(next.letterSpacing) || 0, -1, 12)
-    next.lineHeight = clamp(Number(next.lineHeight) || DEFAULT_GUEST_TEXT_STYLE.lineHeight, 0.9, 2)
 
-    const normalizedWeight = Math.round((Number(next.fontWeight) || DEFAULT_GUEST_TEXT_STYLE.fontWeight) / 100) * 100
+    const allowedSizeUnits = ['px', 'pt']
+    next.fontSizeUnit = allowedSizeUnits.includes(next.fontSizeUnit)
+        ? next.fontSizeUnit
+        : DEFAULT_GUEST_TEXT_STYLE.fontSizeUnit
+
+    const allowedSpacingUnits = ['px', 'pt']
+    next.letterSpacingUnit = allowedSpacingUnits.includes(next.letterSpacingUnit)
+        ? next.letterSpacingUnit
+        : DEFAULT_GUEST_TEXT_STYLE.letterSpacingUnit
+
+    const allowedLineHeightUnits = ['unitless', 'px', 'pt']
+    next.lineHeightUnit = allowedLineHeightUnits.includes(next.lineHeightUnit)
+        ? next.lineHeightUnit
+        : DEFAULT_GUEST_TEXT_STYLE.lineHeightUnit
+
+    const parsedFontSize = Number.parseFloat(next.fontSize)
+    next.fontSize = clamp(
+        Number.isFinite(parsedFontSize) ? parsedFontSize : DEFAULT_GUEST_TEXT_STYLE.fontSize,
+        0,
+        next.fontSizeUnit === 'pt' ? 180 : 240,
+    )
+
+    const parsedLetterSpacing = Number.parseFloat(next.letterSpacing)
+    next.letterSpacing = clamp(
+        Number.isFinite(parsedLetterSpacing) ? parsedLetterSpacing : DEFAULT_GUEST_TEXT_STYLE.letterSpacing,
+        -4,
+        24,
+    )
+
+    const parsedLineHeight = Number.parseFloat(next.lineHeight)
+    if (next.lineHeightUnit === 'unitless') {
+        next.lineHeight = clamp(
+            Number.isFinite(parsedLineHeight) ? parsedLineHeight : DEFAULT_GUEST_TEXT_STYLE.lineHeight,
+            0.6,
+            4,
+        )
+    } else {
+        next.lineHeight = clamp(
+            Number.isFinite(parsedLineHeight) ? parsedLineHeight : 24,
+            next.lineHeightUnit === 'pt' ? 6 : 8,
+            next.lineHeightUnit === 'pt' ? 220 : 300,
+        )
+    }
+
+    const normalizedWeight = Math.round(Number(next.fontWeight) || DEFAULT_GUEST_TEXT_STYLE.fontWeight)
     next.fontWeight = clamp(normalizedWeight, 100, 900)
 
     const allowedFontStyles = ['normal', 'italic']
@@ -87,6 +131,10 @@ const normalizeTextStyle = (style) => {
     }
 
     return next
+}
+
+const getZoneStyle = (zone, fallbackStyle = DEFAULT_GUEST_TEXT_STYLE) => {
+    return normalizeTextStyle(zone?.style || fallbackStyle)
 }
 
 const useCreateEventDPState = () => {
@@ -185,11 +233,20 @@ const useCreateEventDPState = () => {
         let nextActiveIndex = activeTextZoneIndex
 
         if (hasActiveZone) {
+            const activeZoneStyle = getZoneStyle(textZones[activeTextZoneIndex], guestTextStyle)
             nextZones = textZones.map((item, index) => (
-                index === activeTextZoneIndex ? zone : item
+                index === activeTextZoneIndex
+                    ? {
+                        ...zone,
+                        style: activeZoneStyle,
+                    }
+                    : item
             ))
         } else if (textZones.length < MAX_TEXT_ZONES) {
-            nextZones = [...textZones, zone]
+            nextZones = [...textZones, {
+                ...zone,
+                style: normalizeTextStyle(guestTextStyle),
+            }]
             nextActiveIndex = nextZones.length - 1
         } else {
             return
@@ -216,12 +273,17 @@ const useCreateEventDPState = () => {
         const nextActiveIndex = nextZones.length === 0
             ? null
             : Math.min(zoneIndex, nextZones.length - 1)
+        const nextStyle = Number.isInteger(nextActiveIndex)
+            ? getZoneStyle(nextZones[nextActiveIndex], guestTextStyle)
+            : normalizeTextStyle(DEFAULT_GUEST_TEXT_STYLE)
 
         setTextZones(nextZones)
         setActiveTextZoneIndex(nextActiveIndex)
+        setGuestTextStyle(nextStyle)
         persistSnapshot({
             textZones: nextZones,
             activeTextZoneIndex: nextActiveIndex,
+            guestTextStyle: nextStyle,
         })
     }
 
@@ -309,11 +371,14 @@ const useCreateEventDPState = () => {
             return
         }
 
+        const nextStyle = getZoneStyle(textZones[zoneIndex], guestTextStyle)
         setActiveTextZoneIndex(zoneIndex)
         setActiveCanvasTool('text')
+        setGuestTextStyle(nextStyle)
         persistSnapshot({
             activeTextZoneIndex: zoneIndex,
             activeCanvasTool: 'text',
+            guestTextStyle: nextStyle,
         })
     }
 
@@ -322,12 +387,17 @@ const useCreateEventDPState = () => {
         const nextActiveTextZoneIndex = normalized === 'photo'
             ? activeTextZoneIndex
             : (Number.isInteger(activeTextZoneIndex) ? activeTextZoneIndex : (textZones.length > 0 ? 0 : null))
+        const nextStyle = Number.isInteger(nextActiveTextZoneIndex) && nextActiveTextZoneIndex < textZones.length
+            ? getZoneStyle(textZones[nextActiveTextZoneIndex], guestTextStyle)
+            : guestTextStyle
 
         setActiveCanvasTool(normalized)
         setActiveTextZoneIndex(nextActiveTextZoneIndex)
+        setGuestTextStyle(nextStyle)
         persistSnapshot({
             activeCanvasTool: normalized,
             activeTextZoneIndex: nextActiveTextZoneIndex,
+            guestTextStyle: nextStyle,
         })
     }
 
@@ -336,8 +406,31 @@ const useCreateEventDPState = () => {
             ...guestTextStyle,
             ...updates,
         })
+
+        const hasActiveZone = Number.isInteger(activeTextZoneIndex)
+            && activeTextZoneIndex >= 0
+            && activeTextZoneIndex < textZones.length
+
+        const nextZones = hasActiveZone
+            ? textZones.map((zone, index) => (
+                index === activeTextZoneIndex
+                    ? {
+                        ...zone,
+                        style: nextStyle,
+                    }
+                    : zone
+            ))
+            : textZones
+
+        if (hasActiveZone) {
+            setTextZones(nextZones)
+        }
+
         setGuestTextStyle(nextStyle)
-        persistSnapshot({ guestTextStyle: nextStyle })
+        persistSnapshot({
+            guestTextStyle: nextStyle,
+            textZones: nextZones,
+        })
     }
 
     const restoreFromSnapshot = (snapshot) => {
@@ -354,17 +447,27 @@ const useCreateEventDPState = () => {
         setBorderStyle(safeSnapshot.borderStyle || DEFAULT_EDITOR_STATE.borderStyle)
         setSnapToGrid(Boolean(safeSnapshot.snapToGrid))
         setAllowGuestText(Boolean(safeSnapshot.allowGuestText))
+        const normalizedSnapshotStyle = normalizeTextStyle(safeSnapshot.guestTextStyle || DEFAULT_GUEST_TEXT_STYLE)
         const snapshotTextZones = Array.isArray(safeSnapshot.textZones)
-            ? safeSnapshot.textZones.slice(0, MAX_TEXT_ZONES)
+            ? safeSnapshot.textZones
+                .slice(0, MAX_TEXT_ZONES)
+                .map((zone) => ({
+                    ...(zone || {}),
+                    style: getZoneStyle(zone, normalizedSnapshotStyle),
+                }))
             : []
         const hasSnapshotActiveIndex = Number.isInteger(safeSnapshot.activeTextZoneIndex)
             && safeSnapshot.activeTextZoneIndex >= 0
             && safeSnapshot.activeTextZoneIndex < snapshotTextZones.length
+        const nextActiveIndex = hasSnapshotActiveIndex ? safeSnapshot.activeTextZoneIndex : null
+        const nextGuestTextStyle = Number.isInteger(nextActiveIndex)
+            ? getZoneStyle(snapshotTextZones[nextActiveIndex], normalizedSnapshotStyle)
+            : normalizedSnapshotStyle
 
         setTextZones(snapshotTextZones)
-        setActiveTextZoneIndex(hasSnapshotActiveIndex ? safeSnapshot.activeTextZoneIndex : null)
+        setActiveTextZoneIndex(nextActiveIndex)
         setActiveCanvasTool(safeSnapshot.activeCanvasTool || 'photo')
-        setGuestTextStyle(normalizeTextStyle(safeSnapshot.guestTextStyle || DEFAULT_GUEST_TEXT_STYLE))
+        setGuestTextStyle(nextGuestTextStyle)
         setZoom(clamp(Number(safeSnapshot.zoom) || 1, 0.5, 1.8))
         setActiveMenu(safeSnapshot.activeMenu || DEFAULT_EDITOR_STATE.activeMenu)
     }

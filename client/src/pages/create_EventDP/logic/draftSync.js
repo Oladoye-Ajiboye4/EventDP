@@ -114,3 +114,12 @@ export const recordPublicDownload = async ({ slug, projectSlug, accessKey }) => 
     const response = await axios.post(endpoint)
     return response.data
 }
+
+export const deleteDraft = async ({ token, draftId }) => {
+    const response = await axios.delete(
+        `${BASE_URL}createEventDP/drafts/${draftId}`,
+        withAuthHeader(token),
+    )
+
+    return response.data
+}

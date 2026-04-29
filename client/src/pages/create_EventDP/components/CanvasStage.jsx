@@ -2,6 +2,31 @@ import React, { useRef } from 'react'
 import { Icon } from '@iconify/react'
 import useZoneSelector from '../logic/useZoneSelector'
 
+const lengthToPx = (value, unit = 'px') => {
+    const parsed = Number.parseFloat(value)
+    if (!Number.isFinite(parsed)) {
+        return 0
+    }
+
+    return unit === 'pt' ? parsed * (96 / 72) : parsed
+}
+
+const resolveLineHeightCss = (style, scale = 1) => {
+    const unit = style?.lineHeightUnit || 'unitless'
+    const value = Number.parseFloat(style?.lineHeight)
+
+    if (!Number.isFinite(value)) {
+        return 1.25
+    }
+
+    if (unit === 'unitless') {
+        return value
+    }
+
+    const pxValue = lengthToPx(value, unit)
+    return `${Math.max(1, pxValue * scale)}px`
+}
+
 const HANDLE_CONFIG = [
     { key: 'n', className: 'top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 cursor-ns-resize' },
     { key: 's', className: 'bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 cursor-ns-resize' },
@@ -58,6 +83,9 @@ const ZoneOverlay = ({
     const canShowUploadCue = previewMode && !isInteracting
     const canShowTextCue = kind === 'text' && canShowUploadCue
     const canShowPhotoCue = kind === 'photo' && canShowUploadCue
+    const safeTextStyle = textStyle || {}
+    const baseFontSizePx = lengthToPx(safeTextStyle.fontSize || 24, safeTextStyle.fontSizeUnit || 'px')
+    const baseLetterSpacingPx = lengthToPx(safeTextStyle.letterSpacing || 0, safeTextStyle.letterSpacingUnit || 'px')
 
     return (
         <div style={style}>
@@ -84,19 +112,19 @@ const ZoneOverlay = ({
                     <div
                         className='relative w-full text-center px-2 text-white/95'
                         style={{
-                            fontFamily: textStyle.fontFamily,
-                            fontWeight: textStyle.fontWeight,
-                            fontStyle: textStyle.fontStyle,
-                            textDecoration: textStyle.textDecoration,
-                            textTransform: textStyle.textTransform,
-                            fontSize: `${Math.max(12, Math.min(textStyle.fontSize * 0.52, rect.height * 0.35))}px`,
-                            lineHeight: textStyle.lineHeight,
-                            letterSpacing: `${Math.max(-1, Math.min(textStyle.letterSpacing, 3))}px`,
-                            textAlign: textStyle.textAlign,
+                            fontFamily: safeTextStyle.fontFamily || 'Poppins',
+                            fontWeight: safeTextStyle.fontWeight || 700,
+                            fontStyle: safeTextStyle.fontStyle || 'normal',
+                            textDecoration: safeTextStyle.textDecoration || 'none',
+                            textTransform: safeTextStyle.textTransform || 'none',
+                            fontSize: `${Math.max(12, Math.min(baseFontSizePx * 0.52, rect.height * 0.35))}px`,
+                            lineHeight: resolveLineHeightCss(safeTextStyle, 0.52),
+                            letterSpacing: `${Math.max(-2, Math.min(baseLetterSpacingPx * 0.52, 6))}px`,
+                            textAlign: safeTextStyle.textAlign || 'center',
                             textShadow: '0 2px 10px rgba(0, 0, 0, 0.35)',
                         }}
                     >
-                        {textStyle.text || 'Guest custom text'}
+                        {safeTextStyle.text || 'Guest custom text'}
                     </div>
                 </div>
             )}
@@ -107,21 +135,21 @@ const ZoneOverlay = ({
                         <div
                             className='w-full text-center wrap-break-word'
                             style={{
-                                fontFamily: textStyle.fontFamily,
-                                fontWeight: textStyle.fontWeight,
-                                fontStyle: textStyle.fontStyle,
-                                textDecoration: textStyle.textDecoration,
-                                textTransform: textStyle.textTransform,
-                                fontSize: `${Math.max(11, Math.min(textStyle.fontSize * 0.48, rect.height * 0.32))}px`,
-                                lineHeight: textStyle.lineHeight,
-                                letterSpacing: `${textStyle.letterSpacing}px`,
-                                textAlign: textStyle.textAlign,
-                                color: textStyle.color,
+                                fontFamily: safeTextStyle.fontFamily || 'Poppins',
+                                fontWeight: safeTextStyle.fontWeight || 700,
+                                fontStyle: safeTextStyle.fontStyle || 'normal',
+                                textDecoration: safeTextStyle.textDecoration || 'none',
+                                textTransform: safeTextStyle.textTransform || 'none',
+                                fontSize: `${Math.max(11, Math.min(baseFontSizePx * 0.48, rect.height * 0.32))}px`,
+                                lineHeight: resolveLineHeightCss(safeTextStyle, 0.48),
+                                letterSpacing: `${baseLetterSpacingPx * 0.48}px`,
+                                textAlign: safeTextStyle.textAlign || 'center',
+                                color: safeTextStyle.color || '#FFFFFF',
                                 opacity: 0.9,
                                 textShadow: '0 1px 5px rgba(0, 0, 0, 0.25)',
                             }}
                         >
-                            {textStyle.text || 'Add your custom message'}
+                            {safeTextStyle.text || 'Add your custom message'}
                         </div>
                     </div>
                     <div className='absolute top-2 left-2 rounded-full bg-[#2d3857]/85 text-white text-[10px] px-2 py-0.5 font-semibold tracking-wide pointer-events-none'>
@@ -190,12 +218,17 @@ const CanvasStage = ({
     const renderedTextZones = allowGuestText
         ? textZones.map((zone, index) => {
             if (!zone?.display) {
-                return { key: `text-zone-${index}`, rect: null, selected: false }
+                return { key: `text-zone-${index}`, rect: null, selected: false, style: guestTextStyle }
             }
 
             const isSelected = index === activeTextZoneIndex
             const rect = (isTextTool && isSelected && activeRect) ? activeRect : zone.display
-            return { key: `text-zone-${index}`, rect, selected: isSelected }
+            return {
+                key: `text-zone-${index}`,
+                rect,
+                selected: isSelected,
+                style: zone?.style || guestTextStyle,
+            }
         })
         : []
 
@@ -270,7 +303,7 @@ const CanvasStage = ({
                                 showHandles={!previewMode && isTextTool && zone.selected}
                                 previewMode={previewMode}
                                 interactive={!previewMode && isTextTool && zone.selected}
-                                textStyle={guestTextStyle}
+                                textStyle={zone.style}
                             />
                         )
                     ))}

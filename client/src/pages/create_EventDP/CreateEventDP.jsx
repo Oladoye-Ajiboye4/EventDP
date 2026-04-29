@@ -12,6 +12,7 @@ import { LEFT_NAV_ITEMS } from './constants'
 import {
     autosaveDraft,
     createDraft,
+    deleteDraft,
     getFontCatalog,
     getDraft,
     publishDraft,
@@ -32,6 +33,34 @@ const publishExpirySchema = z
     .refine((value) => !Number.isNaN(new Date(value).getTime()), 'Invalid expiry date')
 
 const ACTIVE_DRAFT_STORAGE_KEY = 'eventdp.activeDraftId'
+
+const LOCAL_FONTS = [
+    {
+        family: 'Clash Display',
+        variants: [400, 500, 600, 700],
+    },
+]
+
+const parseFontVariantWeight = (variant) => {
+    if (typeof variant === 'number' && Number.isInteger(variant) && variant >= 100 && variant <= 900) {
+        return variant
+    }
+
+    const value = String(variant || '').trim().toLowerCase()
+    if (!value) {
+        return null
+    }
+
+    if (value === 'regular') return 400
+    if (value === 'italic') return 400
+
+    const numeric = Number.parseInt(value.replace(/[^0-9]/g, ''), 10)
+    if (Number.isInteger(numeric) && numeric >= 100 && numeric <= 900) {
+        return numeric
+    }
+
+    return null
+}
 
 const serializeEditorSnapshot = (editor = {}) => JSON.stringify({
     zoneShape: editor.zoneShape || 'square',
@@ -67,6 +96,8 @@ const CreateEventDP = () => {
     const [isLoadingDraft, setIsLoadingDraft] = useState(false)
     const [fontCatalog, setFontCatalog] = useState([])
     const [fontCatalogError, setFontCatalogError] = useState('')
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+    const [isDeleting, setIsDeleting] = useState(false)
 
     const uploadKeyRef = useRef('')
     const autosaveTimerRef = useRef(null)
@@ -170,8 +201,8 @@ const CreateEventDP = () => {
 
             const variants = Array.isArray(entry?.variants)
                 ? entry.variants
-                    .map((weight) => Number(weight))
-                    .filter((weight) => Number.isInteger(weight) && weight >= 100 && weight <= 900)
+                    .map((weight) => parseFontVariantWeight(weight))
+                    .filter((weight) => Number.isInteger(weight))
                     .sort((a, b) => a - b)
                 : []
 
@@ -186,6 +217,16 @@ const CreateEventDP = () => {
         return variants.map((value) => ({ value, label: String(value) }))
     }, [fontVariantsByFamily, guestTextStyle?.fontFamily])
 
+    const textZoneStyles = useMemo(() => {
+        if (!Array.isArray(textZones)) {
+            return []
+        }
+
+        return textZones
+            .map((zone) => zone?.style || null)
+            .filter(Boolean)
+    }, [textZones])
+
     useEffect(() => {
         let isMounted = true
 
@@ -198,7 +239,9 @@ const CreateEventDP = () => {
                     return
                 }
 
-                setFontCatalog(fonts)
+                // Merge local fonts with fetched fonts
+                const mergedFonts = [...LOCAL_FONTS, ...fonts]
+                setFontCatalog(mergedFonts)
             } catch (error) {
                 if (!isMounted) {
                     return
@@ -206,7 +249,8 @@ const CreateEventDP = () => {
 
                 console.error(error)
                 setFontCatalogError('Unable to load font catalog right now.')
-                setFontCatalog([])
+                // Still set local fonts even if fetch fails
+                setFontCatalog(LOCAL_FONTS)
             }
         }
 
@@ -218,14 +262,25 @@ const CreateEventDP = () => {
     }, [])
 
     useEffect(() => {
-        const selectedFamily = String(guestTextStyle?.fontFamily || '').trim()
-        if (!selectedFamily) {
-            return
-        }
+        const styleEntries = [guestTextStyle, ...textZoneStyles]
+        const familyToWeightsMap = styleEntries.reduce((acc, style) => {
+            const family = String(style?.fontFamily || '').trim()
+            if (!family) {
+                return acc
+            }
 
-        const weights = fontVariantsByFamily[selectedFamily] || [guestTextStyle?.fontWeight || 700]
-        ensureGoogleFontLoaded({ family: selectedFamily, weights })
-    }, [fontVariantsByFamily, guestTextStyle?.fontFamily, guestTextStyle?.fontWeight])
+            const styleWeight = Number(style?.fontWeight) || 700
+            const catalogWeights = fontVariantsByFamily[family] || []
+            const weights = catalogWeights.length > 0 ? catalogWeights : [styleWeight]
+
+            acc[family] = Array.from(new Set([...(acc[family] || []), ...weights]))
+            return acc
+        }, {})
+
+        Object.entries(familyToWeightsMap).forEach(([family, weights]) => {
+            ensureGoogleFontLoaded({ family, weights })
+        })
+    }, [fontVariantsByFamily, guestTextStyle, textZoneStyles])
 
     useEffect(() => {
         if (!guestTextStyle?.fontFamily) {
@@ -621,6 +676,33 @@ const CreateEventDP = () => {
         }
     }
 
+    const handleDeleteProject = async () => {
+        if (!draftMeta.draftId) {
+            return
+        }
+
+        const token = localStorage.getItem('token')
+        if (!token) {
+            return
+        }
+
+        try {
+            setIsDeleting(true)
+            await deleteDraft({ token, draftId: draftMeta.draftId })
+
+            // Clear local state
+            setShowDeleteConfirm(false)
+            localStorage.removeItem(ACTIVE_DRAFT_STORAGE_KEY)
+
+            // Redirect to dashboard
+            window.location.href = '/dashboard'
+        } catch (error) {
+            console.error('Error deleting project:', error)
+            alert('Failed to delete project. Please try again.')
+            setIsDeleting(false)
+        }
+    }
+
     if (isLoadingDraft && !uploadedImage) {
         return (
             <main className='min-h-dvh h-dvh bg-pale-sage flex items-center justify-center'>
@@ -643,6 +725,8 @@ const CreateEventDP = () => {
                 onProjectTitleChange={setProjectTitle}
                 titleError={titleError}
                 isTitleLocked={isEditorLocked}
+                onDeleteClick={() => setShowDeleteConfirm(true)}
+                hasDraft={Boolean(draftMeta.draftId)}
             />
 
             <div className='md:hidden px-3 py-2 border-b border-dusty-green/20 bg-white'>
@@ -999,6 +1083,42 @@ const CreateEventDP = () => {
                                     {social.label}
                                 </button>
                             ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteConfirm && (
+                <div className='fixed inset-0 z-50 bg-dark-slate/55 flex items-center justify-center p-3 sm:p-4'>
+                    <div className='w-full max-w-md rounded-2xl bg-white shadow-2xl p-4 sm:p-6 space-y-4'>
+                        <div>
+                            <h3 className='text-lg font-bold text-dark-slate'>Delete Project?</h3>
+                            <p className='text-sm text-dark-slate/70 mt-2'>
+                                This will permanently delete this project and all its data from our servers and Cloudinary. This action <span className='font-semibold'>cannot be undone</span>.
+                            </p>
+                        </div>
+                        <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                            <p className='text-sm text-red-700'>
+                                <span className='font-semibold'>Warning:</span> All designs, settings, and uploaded assets will be deleted.
+                            </p>
+                        </div>
+                        <div className='flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2'>
+                            <button
+                                type='button'
+                                onClick={() => setShowDeleteConfirm(false)}
+                                disabled={isDeleting}
+                                className='h-10 px-4 rounded-xl border border-dusty-green/35 text-dark-slate font-semibold w-full sm:w-auto disabled:opacity-55'
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type='button'
+                                onClick={handleDeleteProject}
+                                disabled={isDeleting}
+                                className='h-10 px-4 rounded-xl bg-red-600 text-white font-semibold w-full sm:w-auto hover:bg-red-700 transition-colors disabled:opacity-55 disabled:cursor-not-allowed'
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete Project'}
+                            </button>
                         </div>
                     </div>
                 </div>
