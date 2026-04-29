@@ -508,24 +508,39 @@ const PublicEventDP = () => {
         try {
             const baseImage = await loadImageElement(eventDP.asset.secureUrl)
             const photoImage = guestPhotoSrc ? await loadImageElement(guestPhotoSrc) : null
-            const width = Number(eventDP.asset?.width) || 1080
-            const height = Number(eventDP.asset?.height) || 1920
+            const baseWidth = Number(eventDP.asset?.width) || 1080
+            const baseHeight = Number(eventDP.asset?.height) || 1920
+
+            // Scale factor for higher quality (2x = 2160x3840 before downsampling)
+            const scaleFactor = 2
+            const width = baseWidth * scaleFactor
+            const height = baseHeight * scaleFactor
 
             const canvas = document.createElement('canvas')
             canvas.width = width
             canvas.height = height
-            const ctx = canvas.getContext('2d')
+            const ctx = canvas.getContext('2d', { alpha: false })
 
             if (!ctx) {
                 throw new Error('Unable to prepare canvas context')
             }
+
+            // Enable high-quality image rendering
+            ctx.imageSmoothingEnabled = true
+            ctx.imageSmoothingQuality = 'high'
 
             ctx.clearRect(0, 0, width, height)
             ctx.drawImage(baseImage, 0, 0, width, height)
 
             const photoZone = getZoneActual(eventDP.editor?.committedZone)
             if (photoImage && photoZone) {
-                drawImageIntoZone(ctx, photoImage, photoZone, eventDP.editor?.zoneShape)
+                const scaledZone = {
+                    x: Number(photoZone.x) * scaleFactor,
+                    y: Number(photoZone.y) * scaleFactor,
+                    width: Number(photoZone.width) * scaleFactor,
+                    height: Number(photoZone.height) * scaleFactor,
+                }
+                drawImageIntoZone(ctx, photoImage, scaledZone, eventDP.editor?.zoneShape)
             }
 
             const textZones = Array.isArray(eventDP.editor?.textZones) ? eventDP.editor.textZones : []
@@ -535,13 +550,23 @@ const PublicEventDP = () => {
                     return
                 }
 
-                drawTextIntoZone(ctx, submittedText, getZoneActual(zone), eventDP.editor?.guestTextStyle || {})
+                const zoneActual = getZoneActual(zone)
+                const scaledZone = {
+                    x: Number(zoneActual.x) * scaleFactor,
+                    y: Number(zoneActual.y) * scaleFactor,
+                    width: Number(zoneActual.width) * scaleFactor,
+                    height: Number(zoneActual.height) * scaleFactor,
+                }
+                drawTextIntoZone(ctx, submittedText, scaledZone, eventDP.editor?.guestTextStyle || {})
             })
 
             const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
             const extension = format === 'jpg' ? 'jpg' : 'png'
+
+            // Use higher quality for JPEG, or PNG for lossless
+            const quality = format === 'jpg' ? 0.95 : 1.0
             const blob = await new Promise((resolve) => {
-                canvas.toBlob(resolve, mimeType, 0.92)
+                canvas.toBlob(resolve, mimeType, quality)
             })
 
             if (!blob) {
