@@ -21,11 +21,11 @@ import TrailerPage from './pages/homepage_intro/TrailerPage.jsx';
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <TrailerPage />,
+    element: <Homepage />,
   },
   {
-    path: "/homepage",
-    element: <Homepage />,
+    path: "/demo",
+    element: <TrailerPage />,
   },
   {
     path: "/signup",

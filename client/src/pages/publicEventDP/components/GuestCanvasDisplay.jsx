@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Icon } from '@iconify/react'
 import { fitTextLayoutInZone, getTextMeasurementContext, lengthToPx } from '../../create_EventDP/logic/textLayout'
 import { resolveZoneActual, actualToGuestDisplay } from '../../create_EventDP/logic/zoneCoordinates'
+import { getCroppedImageRenderStyle } from '../logic/photoCrop'
 
 const ZoneDisplayOverlay = ({
     rect,
@@ -130,6 +131,8 @@ const GuestCanvasDisplay = ({
     hoveredZone,
     onZoneHover,
     guestPhotoSrc,
+    guestPhotoMeta,
+    guestPhotoAdjustments,
     guestTextByZone,
     previewMode,
 }) => {
@@ -218,6 +221,17 @@ const GuestCanvasDisplay = ({
         : []
 
     const hasGuestPhoto = Boolean(guestPhotoSrc && photoZoneDisplay)
+    const croppedPhotoStyle = hasGuestPhoto && guestPhotoMeta
+        ? getCroppedImageRenderStyle({
+            imageWidth: guestPhotoMeta.width,
+            imageHeight: guestPhotoMeta.height,
+            cropRect: guestPhotoAdjustments?.cropRect,
+            cropEnabled: Boolean(guestPhotoAdjustments?.cropMode),
+            zoom: Number(guestPhotoAdjustments?.zoom || 1),
+            targetWidth: photoZoneDisplay.width,
+            targetHeight: photoZoneDisplay.height,
+        })
+        : null
 
     return (
         <div className='w-full h-full flex flex-col'>
@@ -259,12 +273,25 @@ const GuestCanvasDisplay = ({
                                     zIndex: 10,
                                 }}
                             >
-                                <img
-                                    src={guestPhotoSrc}
-                                    alt='Guest submission'
-                                    className='w-full h-full object-cover'
-                                    draggable={false}
-                                />
+                                {croppedPhotoStyle ? (
+                                    <img
+                                        src={guestPhotoSrc}
+                                        alt='Guest submission'
+                                        className='absolute max-w-none block'
+                                        style={{
+                                            ...croppedPhotoStyle,
+                                            objectFit: 'fill',
+                                        }}
+                                        draggable={false}
+                                    />
+                                ) : (
+                                    <img
+                                        src={guestPhotoSrc}
+                                        alt='Guest submission'
+                                        className='w-full h-full object-cover'
+                                        draggable={false}
+                                    />
+                                )}
                             </div>
                         )}
 

@@ -1,5 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import ReactCrop from 'react-image-crop'
 import { Icon } from '@iconify/react'
+import 'react-image-crop/dist/ReactCrop.css'
+import {
+    clampCropRect,
+    getDefaultCropRect,
+} from '../logic/photoCrop'
 
 /**
  * Form component for guests to submit their content (images or text)
@@ -8,25 +14,39 @@ import { Icon } from '@iconify/react'
 const GuestSubmissionForm = ({
     selectedZoneIndex,
     onPhotoSubmit,
+    onPhotoDraftChange,
     onTextSubmit,
     onClose,
     isLoading,
     initialText,
+    initialPhotoMeta,
+    initialPhotoSrc,
+    initialPhotoAdjustments,
+    photoZoneAspectRatio = 1,
 }) => {
     const [photoFile, setPhotoFile] = useState(null)
     const [photoPreview, setPhotoPreview] = useState(null)
     const [photoMeta, setPhotoMeta] = useState({ width: 0, height: 0 })
+    const [previewRenderSize, setPreviewRenderSize] = useState({ width: 0, height: 0 })
+    const [photoCropRect, setPhotoCropRect] = useState(null)
+    const [photoCropMode, setPhotoCropMode] = useState(false)
     const [photoZoom, setPhotoZoom] = useState(1)
-    const [photoOffsetX, setPhotoOffsetX] = useState(0)
-    const [photoOffsetY, setPhotoOffsetY] = useState(0)
-    const [photoRotation, setPhotoRotation] = useState(0)
     const [processingPhoto, setProcessingPhoto] = useState(false)
     const [textInput, setTextInput] = useState('')
     const [formError, setFormError] = useState(null)
     const fileInputRef = useRef(null)
+    const previewImageRef = useRef(null)
 
     const isPhotoZone = selectedZoneIndex === 'photo'
     const isTextZone = typeof selectedZoneIndex === 'string' && selectedZoneIndex.startsWith('text-')
+    const effectivePreviewRenderSize = useMemo(() => ({
+        width: previewRenderSize.width > 0
+            ? Math.round(previewRenderSize.width * Math.max(1, photoZoom))
+            : 0,
+        height: previewRenderSize.height > 0
+            ? Math.round(previewRenderSize.height * Math.max(1, photoZoom))
+            : 0,
+    }), [photoZoom, previewRenderSize.height, previewRenderSize.width])
 
     useEffect(() => {
         if (!isTextZone) {
@@ -37,6 +57,40 @@ const GuestSubmissionForm = ({
         setFormError(null)
     }, [initialText, isTextZone, selectedZoneIndex])
 
+    useEffect(() => {
+        if (!isPhotoZone || photoPreview || !initialPhotoSrc) {
+            return
+        }
+
+        const nextMeta = initialPhotoMeta && typeof initialPhotoMeta === 'object'
+            ? initialPhotoMeta
+            : { width: 0, height: 0 }
+
+        setPhotoPreview(initialPhotoSrc)
+        setPhotoMeta(nextMeta)
+        setPhotoCropRect(initialPhotoAdjustments?.cropRect && nextMeta.width && nextMeta.height
+            ? clampCropRect(initialPhotoAdjustments.cropRect, nextMeta.width, nextMeta.height)
+            : null)
+        setPhotoCropMode(Boolean(initialPhotoAdjustments?.cropMode))
+        setPhotoZoom(Math.max(1, Number(initialPhotoAdjustments?.zoom || 1)))
+    }, [initialPhotoAdjustments, initialPhotoMeta, initialPhotoSrc, isPhotoZone, photoPreview])
+
+    useEffect(() => {
+        if (!isPhotoZone || !photoPreview) {
+            return
+        }
+
+        onPhotoDraftChange?.({
+            photoSrc: photoPreview,
+            photoMeta,
+            photoAdjustments: {
+                cropRect: photoCropMode ? photoCropRect : null,
+                zoom: photoZoom,
+                cropMode: photoCropMode,
+            },
+        })
+    }, [isPhotoZone, onPhotoDraftChange, photoCropMode, photoCropRect, photoMeta, photoPreview, photoZoom])
+
     const loadImageElement = (src) => new Promise((resolve, reject) => {
         const image = new Image()
         image.onload = () => resolve(image)
@@ -44,12 +98,109 @@ const GuestSubmissionForm = ({
         image.src = src
     })
 
+    const emitPhotoDraftChange = (nextPhotoSrc, nextMeta, nextCropRect, nextZoom, nextCropMode) => {
+        onPhotoDraftChange?.({
+            photoSrc: nextPhotoSrc,
+            photoMeta: nextMeta,
+            photoAdjustments: nextPhotoSrc ? {
+                cropRect: nextCropMode && nextCropRect
+                    ? clampCropRect(nextCropRect, Number(nextMeta?.width) || 0, Number(nextMeta?.height) || 0)
+                    : null,
+                zoom: nextZoom,
+                cropMode: nextCropMode,
+            } : null,
+        })
+    }
+
     const resetPhotoEditor = () => {
         setPhotoZoom(1)
-        setPhotoOffsetX(0)
-        setPhotoOffsetY(0)
-        setPhotoRotation(0)
+        setPreviewRenderSize({ width: 0, height: 0 })
+        setPhotoCropRect(null)
+        setPhotoCropMode(false)
     }
+
+    const naturalCropToDisplayCrop = (cropRect, meta, renderSize) => {
+        if (!cropRect || !meta?.width || !meta?.height || !renderSize?.width || !renderSize?.height) {
+            return null
+        }
+
+        const scaleX = renderSize.width / meta.width
+        const scaleY = renderSize.height / meta.height
+
+        return {
+            unit: 'px',
+            x: Number(cropRect.x || 0) * scaleX,
+            y: Number(cropRect.y || 0) * scaleY,
+            width: Number(cropRect.width || 0) * scaleX,
+            height: Number(cropRect.height || 0) * scaleY,
+        }
+    }
+
+    const displayCropToNaturalCrop = (cropRect, meta, renderSize) => {
+        if (!cropRect || !meta?.width || !meta?.height || !renderSize?.width || !renderSize?.height) {
+            return null
+        }
+
+        const scaleX = meta.width / renderSize.width
+        const scaleY = meta.height / renderSize.height
+
+        return clampCropRect({
+            x: Number(cropRect.x || 0) * scaleX,
+            y: Number(cropRect.y || 0) * scaleY,
+            width: Number(cropRect.width || 0) * scaleX,
+            height: Number(cropRect.height || 0) * scaleY,
+        }, meta.width, meta.height)
+    }
+
+    const displayCropRect = useMemo(() => (
+        naturalCropToDisplayCrop(photoCropRect, photoMeta, effectivePreviewRenderSize)
+    ), [effectivePreviewRenderSize, photoCropRect, photoMeta])
+
+    const recalculatePreviewBaseSize = () => {
+        const img = previewImageRef.current
+        if (!img) {
+            return
+        }
+
+        const rect = img.getBoundingClientRect()
+        const zoom = Math.max(1, photoZoom)
+        const nextBaseSize = {
+            width: Math.max(1, Math.round(rect.width / zoom)),
+            height: Math.max(1, Math.round(rect.height / zoom)),
+        }
+
+        setPreviewRenderSize((prev) => (
+            prev.width === nextBaseSize.width && prev.height === nextBaseSize.height
+                ? prev
+                : nextBaseSize
+        ))
+    }
+
+    const handlePreviewImageLoad = (event) => {
+        const img = event.currentTarget
+        const nextMeta = {
+            width: Number(img.naturalWidth) || photoMeta.width,
+            height: Number(img.naturalHeight) || photoMeta.height,
+        }
+
+        const rect = img.getBoundingClientRect()
+        const zoom = Math.max(1, photoZoom)
+        const nextRenderSize = {
+            width: Math.max(1, Math.round(rect.width / zoom)),
+            height: Math.max(1, Math.round(rect.height / zoom)),
+        }
+
+        setPhotoMeta(nextMeta)
+        setPreviewRenderSize(nextRenderSize)
+
+        if (!photoCropRect && nextMeta.width && nextMeta.height) {
+            setPhotoCropRect(getDefaultCropRect(nextMeta.width, nextMeta.height, photoZoneAspectRatio, 1))
+        }
+    }
+
+    useEffect(() => {
+        recalculatePreviewBaseSize()
+    }, [photoZoom])
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0]
@@ -79,7 +230,13 @@ const GuestSubmissionForm = ({
 
             try {
                 const image = await loadImageElement(previewSrc)
-                setPhotoMeta({ width: image.width, height: image.height })
+                const nextMeta = { width: image.width, height: image.height }
+                const nextCrop = getDefaultCropRect(image.width, image.height, photoZoneAspectRatio, 1)
+                setPhotoMeta(nextMeta)
+                setPhotoCropRect(nextCrop)
+                setPhotoCropMode(false)
+                setPhotoZoom(1)
+                emitPhotoDraftChange(previewSrc, nextMeta, nextCrop, 1, false)
             } catch {
                 setPhotoMeta({ width: 0, height: 0 })
             }
@@ -87,8 +244,44 @@ const GuestSubmissionForm = ({
         reader.readAsDataURL(file)
     }
 
+    const handleCropChange = (crop) => {
+        if (!photoMeta.width || !photoMeta.height || !crop || !effectivePreviewRenderSize.width || !effectivePreviewRenderSize.height) {
+            return
+        }
+
+        const nextCrop = displayCropToNaturalCrop(crop, photoMeta, effectivePreviewRenderSize)
+        if (!nextCrop) {
+            return
+        }
+
+        setPhotoCropRect(nextCrop)
+    }
+
+    const handleZoomChange = (event) => {
+        const nextZoom = Number(event.target.value)
+        setPhotoZoom(nextZoom)
+    }
+
+    const handleCropModeToggle = () => {
+        if (!photoPreview) {
+            fileInputRef.current?.click()
+            return
+        }
+
+        setPhotoCropMode((current) => {
+            const nextMode = !current
+
+            if (nextMode && !photoCropRect && photoMeta.width && photoMeta.height) {
+                const fallbackCrop = getDefaultCropRect(photoMeta.width, photoMeta.height, photoZoneAspectRatio, 1)
+                setPhotoCropRect(fallbackCrop)
+            }
+
+            return nextMode
+        })
+    }
+
     const handlePhotoSubmit = async () => {
-        if (!photoFile) {
+        if (!photoFile && !photoPreview) {
             setFormError('Please select a photo')
             return
         }
@@ -98,11 +291,11 @@ const GuestSubmissionForm = ({
         try {
             onPhotoSubmit?.({
                 file: photoFile,
+                photoSrc: photoPreview,
                 adjustments: {
+                    cropRect: photoCropMode ? photoCropRect : null,
                     zoom: photoZoom,
-                    offsetX: photoOffsetX,
-                    offsetY: photoOffsetY,
-                    rotation: photoRotation,
+                    cropMode: photoCropMode,
                 },
                 meta: photoMeta,
             }, () => {
@@ -150,6 +343,36 @@ const GuestSubmissionForm = ({
 
     return (
         <div className='fixed inset-0 flex items-end justify-center p-3 sm:p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pointer-events-none z-100'>
+            <style>{`
+                /* Increase crop handle touch targets and visibility */
+                .react-image-crop__resize-handle {
+                    width: 20px !important;
+                    height: 20px !important;
+                    background: rgba(255,255,255,0.95) !important;
+                    border: 2px solid rgba(31,41,55,0.9) !important;
+                    box-shadow: 0 1px 2px rgba(0,0,0,0.12) !important;
+                    border-radius: 4px !important;
+                    margin: -10px !important;
+                    z-index: 30 !important;
+                }
+                .react-image-crop__resize-handle--e,
+                .react-image-crop__resize-handle--w { cursor: ew-resize !important; }
+                .react-image-crop__resize-handle--n,
+                .react-image-crop__resize-handle--s { cursor: ns-resize !important; }
+                .react-image-crop__crop-selection {
+                    outline: 2px dashed rgba(34,197,94,0.85) !important;
+                    outline-offset: -6px !important;
+                }
+                /* Larger touch targets on touch devices */
+                @media (hover: none) {
+                    .react-image-crop__resize-handle {
+                        width: 30px !important;
+                        height: 30px !important;
+                        margin: -15px !important;
+                        border-radius: 6px !important;
+                    }
+                }
+            `}</style>
             {/* Submission Panel */}
             <div className='bg-white rounded-t-2xl shadow-2xl border border-dusty-green/20 w-full max-w-md max-h-[calc(100dvh-1.5rem)] sm:max-h-[calc(100dvh-2rem)] pointer-events-auto overflow-hidden flex flex-col animate-slide-up'>
                 {/* Header */}
@@ -178,85 +401,100 @@ const GuestSubmissionForm = ({
                         <>
                             {photoPreview ? (
                                 <div className='space-y-3'>
-                                    <div className='relative rounded-lg overflow-hidden bg-gray-100 aspect-square'>
-                                        <div className='absolute inset-0 pointer-events-none border-[3px] border-white/75 z-10' />
-                                        <img
-                                            src={photoPreview}
-                                            alt='Preview'
-                                            className='w-full h-full object-cover'
-                                            style={{
-                                                transform: `translate(${photoOffsetX}px, ${photoOffsetY}px) scale(${photoZoom}) rotate(${photoRotation}deg)`,
-                                                transformOrigin: 'center center',
-                                            }}
-                                        />
+                                    <div className='flex items-center justify-between gap-2'>
+                                        <button
+                                            type='button'
+                                            onClick={handleCropModeToggle}
+                                            className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${photoCropMode ? 'bg-forest-green text-white' : 'bg-pale-sage text-dark-slate border border-dusty-green/30'}`}
+                                        >
+                                            <Icon icon='mdi:crop-free' width='16' height='16' />
+                                            {photoCropMode ? 'Crop enabled' : 'Crop photo'}
+                                        </button>
                                         <button
                                             onClick={() => {
                                                 setPhotoFile(null)
                                                 setPhotoPreview(null)
                                                 setPhotoMeta({ width: 0, height: 0 })
                                                 resetPhotoEditor()
+                                                emitPhotoDraftChange('', null, null, 1, false)
                                                 if (fileInputRef.current) fileInputRef.current.value = ''
                                             }}
-                                            className='absolute top-2 right-2 h-8 w-8 rounded-full bg-dark-slate/80 text-white flex items-center justify-center hover:bg-dark-slate transition-colors z-20'
+                                            className='h-8 w-8 rounded-full bg-dark-slate/80 text-white flex items-center justify-center hover:bg-dark-slate transition-colors'
                                             aria-label='Remove'
                                         >
                                             <Icon icon='mdi:close' width='16' height='16' />
                                         </button>
                                     </div>
 
-                                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-dark-slate/70'>
+                                    <div className='rounded-2xl overflow-hidden bg-slate-950/5 border border-dusty-green/15 p-2'>
+                                        {photoCropMode && photoCropRect ? (
+                                            <div className='max-h-[58svh] overflow-auto touch-pan-x touch-pan-y'>
+                                                <ReactCrop
+                                                    crop={displayCropRect || undefined}
+                                                    onChange={handleCropChange}
+                                                    aspect={photoZoneAspectRatio}
+                                                    minWidth={40}
+                                                    minHeight={40}
+                                                    keepSelection
+                                                    className='mx-auto'
+                                                >
+                                                    <img
+                                                        ref={previewImageRef}
+                                                        src={photoPreview}
+                                                        alt='Preview'
+                                                        className='block select-none'
+                                                        style={{
+                                                            width: effectivePreviewRenderSize.width > 0 ? `${effectivePreviewRenderSize.width}px` : 'auto',
+                                                            height: effectivePreviewRenderSize.height > 0 ? `${effectivePreviewRenderSize.height}px` : 'auto',
+                                                            maxWidth: effectivePreviewRenderSize.width > 0 ? 'none' : '100%',
+                                                            maxHeight: effectivePreviewRenderSize.height > 0 ? 'none' : '58svh',
+                                                        }}
+                                                        draggable={false}
+                                                        onLoad={handlePreviewImageLoad}
+                                                    />
+                                                </ReactCrop>
+                                            </div>
+                                        ) : (
+                                            <img
+                                                ref={previewImageRef}
+                                                src={photoPreview}
+                                                alt='Preview'
+                                                className='block max-w-full max-h-[58svh] mx-auto select-none'
+                                                style={{
+                                                    width: effectivePreviewRenderSize.width > 0 ? `${effectivePreviewRenderSize.width}px` : 'auto',
+                                                    height: effectivePreviewRenderSize.height > 0 ? `${effectivePreviewRenderSize.height}px` : 'auto',
+                                                    maxWidth: effectivePreviewRenderSize.width > 0 ? 'none' : '100%',
+                                                    maxHeight: effectivePreviewRenderSize.height > 0 ? 'none' : '58svh',
+                                                    objectFit: 'contain',
+                                                }}
+                                                draggable={false}
+                                                onLoad={handlePreviewImageLoad}
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className='grid grid-cols-1 gap-2 text-[11px] text-dark-slate/70'>
                                         <label className='space-y-1'>
-                                            <span>Zoom</span>
+                                            <span className='flex items-center justify-between'>
+                                                <span>Zoom</span>
+                                                <span className='font-semibold text-dark-slate'>{Math.round(photoZoom * 100)}%</span>
+                                            </span>
                                             <input
                                                 type='range'
                                                 min='1'
                                                 max='3'
-                                                step='0.05'
+                                                step='0.01'
                                                 value={photoZoom}
-                                                onChange={(event) => setPhotoZoom(Number(event.target.value))}
-                                                className='w-full accent-forest-green'
-                                            />
-                                        </label>
-                                        <label className='space-y-1'>
-                                            <span>Rotate</span>
-                                            <input
-                                                type='range'
-                                                min='-30'
-                                                max='30'
-                                                step='1'
-                                                value={photoRotation}
-                                                onChange={(event) => setPhotoRotation(Number(event.target.value))}
-                                                className='w-full accent-forest-green'
-                                            />
-                                        </label>
-                                        <label className='space-y-1'>
-                                            <span>Move X</span>
-                                            <input
-                                                type='range'
-                                                min='-120'
-                                                max='120'
-                                                step='1'
-                                                value={photoOffsetX}
-                                                onChange={(event) => setPhotoOffsetX(Number(event.target.value))}
-                                                className='w-full accent-forest-green'
-                                            />
-                                        </label>
-                                        <label className='space-y-1'>
-                                            <span>Move Y</span>
-                                            <input
-                                                type='range'
-                                                min='-120'
-                                                max='120'
-                                                step='1'
-                                                value={photoOffsetY}
-                                                onChange={(event) => setPhotoOffsetY(Number(event.target.value))}
-                                                className='w-full accent-forest-green'
+                                                onChange={handleZoomChange}
+                                                className='w-full cursor-grab active:cursor-grabbing accent-forest-green'
                                             />
                                         </label>
                                     </div>
 
                                     <p className='text-[10px] text-dark-slate/55'>
-                                        Crop is exported as a square focus area.
+                                        {photoCropMode
+                                            ? 'Drag the crop edges or corners. The main flier updates as you edit.'
+                                            : 'Turn on crop mode to adjust the frame.'}
                                         {photoMeta.width && photoMeta.height ? ` Source: ${photoMeta.width} x ${photoMeta.height}px.` : ''}
                                     </p>
                                 </div>
@@ -323,7 +561,7 @@ const GuestSubmissionForm = ({
                     </button>
                     <button
                         onClick={isPhotoZone ? handlePhotoSubmit : handleTextSubmit}
-                        disabled={isLoading || processingPhoto || (isPhotoZone ? !photoFile : !textInput.trim())}
+                        disabled={isLoading || processingPhoto || (isPhotoZone ? !photoPreview : !textInput.trim())}
                         className='flex-1 px-4 py-2 rounded-lg bg-forest-green text-white font-medium text-sm hover:bg-forest-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors inline-flex items-center justify-center gap-2'
                     >
                         {(isLoading || processingPhoto) && <Icon icon='mdi:loading' width='16' height='16' className='animate-spin' />}

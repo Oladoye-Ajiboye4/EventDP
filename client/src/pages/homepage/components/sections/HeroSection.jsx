@@ -69,7 +69,7 @@ const HeroSection = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                 </svg>
               </Link>
-              <Link to="/" data-gsap-hover data-gsap-magnetic className="bg-white dark:bg-gray-800 text-dark-slate dark:text-white border border-gray-200 dark:border-gray-700 text-center px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
+              <Link to="/demo" data-gsap-hover data-gsap-magnetic className="bg-white dark:bg-gray-800 text-dark-slate dark:text-white border border-gray-200 dark:border-gray-700 text-center px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl font-semibold text-base sm:text-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all flex items-center justify-center gap-2">
                 <svg className="w-5 h-5 text-forest-green" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M8 5v14l11-7z" />
                 </svg>

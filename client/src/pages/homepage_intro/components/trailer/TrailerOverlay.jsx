@@ -94,7 +94,7 @@ export default function TrailerOverlay() {
                             Start Your Event Free
                         </button>
                         <a
-                            href="/homepage"
+                            href="/"
                             className="w-full sm:w-auto bg-transparent hover:bg-emerald-500 text-slate-300 font-bold text-base sm:text-lg px-8 sm:px-10 py-3 sm:py-4 rounded-full transition-transform hover:scale-105 duration-200 cursor-pointer pointer-events-auto"
                         >
                             Go Home

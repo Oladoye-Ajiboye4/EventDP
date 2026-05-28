@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import { useParams } from 'react-router'
 import { Icon } from '@iconify/react'
 import {
@@ -11,6 +11,7 @@ import {
 import { ensureGoogleFontLoaded } from '../create_EventDP/logic/fontLoader'
 import { fitTextLayoutInZone } from '../create_EventDP/logic/textLayout'
 import { resolveZoneActual } from '../create_EventDP/logic/zoneCoordinates'
+import { drawCroppedImageIntoZone } from './logic/photoCrop'
 import GuestCanvasDisplay from './components/GuestCanvasDisplay'
 import GuestSubmissionForm from './components/GuestSubmissionForm'
 
@@ -102,7 +103,7 @@ const drawImageIntoZone = (ctx, image, zone, zoneShape, adjustments = null) => {
     ctx.restore()
 }
 
-const drawTextIntoZone = (ctx, text, zone, textStyle, exportScale = 1) => {
+const drawTextIntoZone = (ctx, text, zone, textStyle) => {
     const x = Number(zone?.x || 0)
     const y = Number(zone?.y || 0)
     const width = Number(zone?.width || 0)
@@ -220,6 +221,7 @@ const drawTextIntoZone = (ctx, text, zone, textStyle, exportScale = 1) => {
 const buildFinalCompositeBlob = async ({
     eventDP,
     guestPhotoSrc,
+    guestPhotoMeta,
     guestPhotoAdjustments,
     guestTextByZone,
     format = 'png',
@@ -274,7 +276,34 @@ const buildFinalCompositeBlob = async ({
             height: Number(photoZone.height) * scaleFactor,
         }
 
-        drawImageIntoZone(ctx, guestImage, scaledZone, eventDP.editor?.zoneShape || 'square', guestPhotoAdjustments)
+        const hasLegacyTransform = Boolean(
+            Number(guestPhotoAdjustments?.offsetX)
+            || Number(guestPhotoAdjustments?.offsetY)
+            || Number(guestPhotoAdjustments?.rotation),
+        )
+
+        if (hasLegacyTransform) {
+            drawImageIntoZone(ctx, guestImage, scaledZone, eventDP.editor?.zoneShape || 'square', guestPhotoAdjustments)
+        } else {
+            drawCroppedImageIntoZone(
+                ctx,
+                guestImage,
+                scaledZone,
+                {
+                    cropRect: guestPhotoAdjustments?.cropRect
+                        ? {
+                            x: Number(guestPhotoAdjustments.cropRect.x) || 0,
+                            y: Number(guestPhotoAdjustments.cropRect.y) || 0,
+                            width: Number(guestPhotoAdjustments.cropRect.width) || (guestPhotoMeta?.width || guestImage.width),
+                            height: Number(guestPhotoAdjustments.cropRect.height) || (guestPhotoMeta?.height || guestImage.height),
+                        }
+                        : null,
+                    zoom: Number(guestPhotoAdjustments?.zoom || 1),
+                    cropMode: Boolean(guestPhotoAdjustments?.cropMode),
+                },
+                eventDP.editor?.zoneShape || 'square',
+            )
+        }
     }
 
     const textZones = Array.isArray(eventDP.editor?.textZones) ? eventDP.editor.textZones : []
@@ -297,7 +326,7 @@ const buildFinalCompositeBlob = async ({
             height: Number(zoneActual.height) * scaleFactor,
         }
 
-        drawTextIntoZone(ctx, submittedText, scaledZone, zoneStyle, scaleFactor)
+        drawTextIntoZone(ctx, submittedText, scaledZone, zoneStyle)
     })
 
     const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png'
@@ -387,6 +416,7 @@ const PublicEventDP = () => {
     const [submitting, setSubmitting] = useState(false)
     const [submitSuccess, setSubmitSuccess] = useState(false)
     const [guestPhotoSrc, setGuestPhotoSrc] = useState('')
+    const [guestPhotoMeta, setGuestPhotoMeta] = useState(null)
     const [guestPhotoAdjustments, setGuestPhotoAdjustments] = useState(null)
     const [guestTextByZone, setGuestTextByZone] = useState({})
     const [guestViewMode, setGuestViewMode] = useState('edit')
@@ -396,6 +426,27 @@ const PublicEventDP = () => {
     const [downloadError, setDownloadError] = useState('')
     const [isDownloading, setIsDownloading] = useState(false)
     const [downloadCount, setDownloadCount] = useState(0)
+
+    const imageDimensions = useMemo(() => ({
+        width: Number(eventDP?.asset?.width) || 1080,
+        height: Number(eventDP?.asset?.height) || 1920,
+    }), [eventDP?.asset?.height, eventDP?.asset?.width])
+
+    const photoZoneActual = useMemo(() => {
+        if (!eventDP?.editor?.committedZone) {
+            return null
+        }
+
+        return resolveZoneActual(eventDP.editor.committedZone, imageDimensions)
+    }, [eventDP?.editor?.committedZone, imageDimensions])
+
+    const photoZoneAspectRatio = useMemo(() => {
+        if (!photoZoneActual?.width || !photoZoneActual?.height) {
+            return 1
+        }
+
+        return photoZoneActual.width / photoZoneActual.height
+    }, [photoZoneActual])
 
     const guestDraftStorageKey = useMemo(() => {
         if (eventDP?._id) {
@@ -447,6 +498,7 @@ const PublicEventDP = () => {
 
             const parsed = JSON.parse(raw)
             setGuestPhotoSrc(typeof parsed.photoSrc === 'string' ? parsed.photoSrc : '')
+            setGuestPhotoMeta(parsed.photoMeta && typeof parsed.photoMeta === 'object' ? parsed.photoMeta : null)
             setGuestPhotoAdjustments(parsed.photoAdjustments && typeof parsed.photoAdjustments === 'object' ? parsed.photoAdjustments : null)
             setGuestTextByZone(parsed.textByZone && typeof parsed.textByZone === 'object' ? parsed.textByZone : {})
             setGuestViewMode(parsed.viewMode === 'preview' ? 'preview' : 'edit')
@@ -464,6 +516,7 @@ const PublicEventDP = () => {
         try {
             localStorage.setItem(guestDraftStorageKey, JSON.stringify({
                 photoSrc: guestPhotoSrc,
+                photoMeta: guestPhotoMeta,
                 photoAdjustments: guestPhotoAdjustments,
                 textByZone: guestTextByZone,
                 viewMode: guestViewMode,
@@ -473,7 +526,7 @@ const PublicEventDP = () => {
         } catch (err) {
             console.warn('Failed to persist guest draft locally', err)
         }
-    }, [eventDP, guestDraftStorageKey, guestPhotoAdjustments, guestPhotoSrc, guestTextByZone, guestViewMode, finalImage])
+    }, [eventDP, guestDraftStorageKey, guestPhotoAdjustments, guestPhotoMeta, guestPhotoSrc, guestTextByZone, guestViewMode, finalImage])
 
     useEffect(() => {
         const editor = eventDP?.editor
@@ -515,12 +568,13 @@ const PublicEventDP = () => {
         try {
             setSubmitting(true)
             const file = submission?.file
-            if (!file) {
+            const imageDataUrl = submission?.photoSrc || (file ? await readFileAsDataUrl(file) : '')
+            if (!imageDataUrl) {
                 throw new Error('Missing guest photo file')
             }
 
-            const imageDataUrl = await readFileAsDataUrl(file)
             setGuestPhotoSrc(imageDataUrl)
+            setGuestPhotoMeta(submission?.meta || null)
             setGuestPhotoAdjustments(submission?.adjustments || null)
             setFinalImage(null)
             setFinalizeError('')
@@ -537,6 +591,15 @@ const PublicEventDP = () => {
             setSubmitting(false)
         }
     }
+
+    const handlePhotoDraftChange = useCallback(({ photoSrc, photoMeta, photoAdjustments }) => {
+        setGuestPhotoSrc(typeof photoSrc === 'string' ? photoSrc : '')
+        setGuestPhotoMeta(photoMeta && typeof photoMeta === 'object' ? photoMeta : null)
+        setGuestPhotoAdjustments(photoAdjustments && typeof photoAdjustments === 'object' ? photoAdjustments : null)
+        setFinalImage(null)
+        setFinalizeError('')
+        setDownloadError('')
+    }, [])
 
     const handleTextSubmit = async (zoneIndex, text, onSuccess) => {
         try {
@@ -624,7 +687,6 @@ const PublicEventDP = () => {
 
     const hasGuestTextSubmission = Object.values(guestTextByZone).some((value) => Boolean(String(value || '').trim()))
     const canFinalize = Boolean(eventDP.asset?.secureUrl && (guestPhotoSrc || hasGuestTextSubmission))
-    const canDownload = Boolean(finalImage?.secureUrl)
     const activeTextIndex = selectedZoneIndex?.startsWith('text-')
         ? Number(selectedZoneIndex.split('-')[1])
         : null
@@ -672,6 +734,7 @@ const PublicEventDP = () => {
             const { blob, mimeType, extension } = await buildFinalCompositeBlob({
                 eventDP,
                 guestPhotoSrc,
+                guestPhotoMeta,
                 guestPhotoAdjustments,
                 guestTextByZone,
                 format: 'png',
@@ -810,6 +873,8 @@ const PublicEventDP = () => {
                             hoveredZone={hoveredZone}
                             onZoneHover={setHoveredZone}
                             guestPhotoSrc={guestPhotoSrc}
+                            guestPhotoMeta={guestPhotoMeta}
+                            guestPhotoAdjustments={guestPhotoAdjustments}
                             guestTextByZone={guestTextByZone}
                             previewMode={guestViewMode === 'preview'}
                         />
@@ -946,7 +1011,7 @@ const PublicEventDP = () => {
                                         )}
                                     </button>
                                     <p className='text-[11px] text-dark-slate/60'>
-                                        Finish editing to save the completed HD EventDP to Cloudinary.
+                                        Finish editing to process the final image.
                                     </p>
                                     {finalizeError && (
                                         <p className='text-xs text-red-600'>{finalizeError}</p>
@@ -973,7 +1038,7 @@ const PublicEventDP = () => {
                                         </button>
                                     </div>
                                     <p className='text-[11px] text-dark-slate/60'>
-                                        Final image saved to Cloudinary and ready for download.
+                                        Final image is processed and ready for download.
                                     </p>
                                     <p className='text-[11px] text-dark-slate/60'>
                                         Total downloads: {downloadCount}
@@ -1031,10 +1096,15 @@ const PublicEventDP = () => {
                 <GuestSubmissionForm
                     selectedZoneIndex={selectedZoneIndex}
                     onPhotoSubmit={handlePhotoSubmit}
+                    onPhotoDraftChange={handlePhotoDraftChange}
                     onTextSubmit={handleTextSubmit}
                     onClose={() => setSelectedZoneIndex(null)}
                     isLoading={submitting}
                     initialText={activeTextValue}
+                    initialPhotoSrc={guestPhotoSrc}
+                    initialPhotoMeta={guestPhotoMeta}
+                    initialPhotoAdjustments={guestPhotoAdjustments}
+                    photoZoneAspectRatio={photoZoneAspectRatio}
                 />
             )}
         </main>
